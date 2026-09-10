@@ -113,6 +113,20 @@ npm run dev
 | ![](docs/board.png) | ![](docs/roadmap.png) |
 -->
 
+| Доска по статусам | Дорожная карта |
+|---|---|
+| ![](docs/tasks1.png) | ![](docs/tasks2.png) |
+| ![](docs/tasks3.png) | ![](docs/tasks4.png) |
+| ![](docs/tasks5.png) | ![](docs/roadmap1.png) |
+| ![](docs/task_assign_to_me1.png) | ![](docs/roadmap2.png) |
+| ![](docs/help1.png) | ![](docs/milestones1.png) |
+| ![](docs/projects1.png) | ![](docs/reports1.png) |
+| ![](docs/task_edit1.png) | ![](docs/users1.png) |
+| ![](docs/wiki1.png) | ![](docs/users1.png) |
+
+
+
+
 ---
 
 ## Как устроено
