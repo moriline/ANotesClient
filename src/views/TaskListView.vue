@@ -662,91 +662,15 @@ function selectViewMode(v: typeof viewMode.value) {
         <span class="text-[13px] font-normal text-muted">(Найдено: {{ openCount }})</span>
       </template>
       <template #actions>
-        <UButton v-if="selectedIds.size === 0" icon="i-lucide-plus" color="primary" @click="createTaskModalOpen = true">Задача</UButton>
-      </template>
-
-      <!-- Один ряд, justify-between. Слева — поиск + фильтры, свой flex-wrap:
-           переносятся сами по себе на новую строку, не задевая ничего справа.
-           Справа — сегментированный переключатель вида, фиксированной ширины,
-           никогда не участвует в переносе слева (тот самый паттерн из Linear/
-           Jira/GitHub — компактные фильтры-«таблетки» одной высоты слева,
-           переключатель вида отдельной зоной справа). Все фильтры теперь
-           однострочные (иконка категории вместо подписи сверху — у UFormField
-           не было слота на текст триггера целиком, а разная высота у
-           UFormField-полей и чекбоксов и была причиной «скачет»), поэтому и
-           ряд предсказуем, и «Назначено мне»/«Архивные» больше не выбиваются
-           формой из общего ряда. -->
-      <div v-if="selectedIds.size === 0" class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <div class="flex flex-wrap items-center gap-2">
-          <UInput v-model="search" icon="i-lucide-search" placeholder="Поиск строки или #номер" class="w-[240px]" />
-          <USelectMenu v-model="projectId" :items="projectItems" value-key="value" icon="i-lucide-folder" placeholder="Проект" class="w-[170px]" />
-          <UTooltip :text="projectId ? 'База знаний проекта' : 'Сначала выберите проект'">
-            <UButton
-              :to="projectId ? `/projects/${projectId}/wiki` : undefined"
-              :disabled="!projectId"
-              icon="i-lucide-book-open"
-              variant="outline"
-              color="primary"
-              aria-label="База знаний"
-            />
-          </UTooltip>
-          <USelectMenu
-            v-model="statusId"
-            :items="statusItems"
-            value-key="value"
-            :disabled="!projectId || viewMode === 'board'"
-            icon="i-lucide-circle-dot"
-            placeholder="Статус"
-            class="w-[150px]"
-          />
-          <USelectMenu
-            v-model="milestoneFilter"
-            :items="milestoneFilterItems"
-            value-key="value"
-            :disabled="!projectId"
-            icon="i-lucide-diamond"
-            placeholder="Веха"
-            class="w-[150px]"
-          />
-          <USelectMenu v-model="assignedUserId" :items="userItems" value-key="value" :disabled="assignedToMe" icon="i-lucide-user" placeholder="Исполнитель" class="w-[170px]" />
-          <USelectMenu
-            v-model="taskType"
-            :items="typeItems"
-            value-key="value"
-            :disabled="viewMode !== 'list'"
-            icon="i-lucide-shapes"
-            placeholder="Вид"
-            class="w-[140px]"
-          />
-          <USelectMenu
-            v-if="allTags.length"
-            v-model="selectedTags"
-            :items="allTags"
-            multiple
-            icon="i-lucide-tag"
-            placeholder="Теги"
-            class="w-[170px]"
-          />
-          <UButton
-            icon="i-lucide-user-check"
-            :variant="assignedToMe ? 'solid' : 'outline'"
-            color="primary"
-            @click="assignedToMe = !assignedToMe"
-          >
-            Назначено мне
-          </UButton>
-          <UButton
-            icon="i-lucide-archive"
-            :variant="showArchived ? 'solid' : 'outline'"
-            color="primary"
-            @click="showArchived = !showArchived"
-          >
-            Архивные
-          </UButton>
-          <UButton v-if="hasActiveFilters" variant="link" color="primary" icon="i-lucide-x" @click="resetFilters">Сбросить</UButton>
-        </div>
-
-        <div class="flex shrink-0 items-center gap-1">
+        <template v-if="selectedIds.size === 0">
+          <!-- В #actions, НЕ в ряду фильтров: это отдельный layout-блок в
+               строке заголовка (рендерит PageHeader сам, вне flex-wrap с
+               фильтрами) — сколько бы фильтров ни появилось/пропало ниже
+               (Сбросить, Теги), сюда это структурно не дотягивается. Три
+               попытки удержать переключатель вида в общем с фильтрами ряду
+               (через justify-between, через отдельную строку) всё равно
+               давали смещение при любом изменении состава фильтров —
+               единственный надёжный вариант оказался «не тот же контейнер». -->
           <div class="inline-flex rounded-lg border border-default p-0.5">
             <UTooltip v-for="v in viewItems" :key="v.value" :text="v.label">
               <button
@@ -767,7 +691,77 @@ function selectViewMode(v: typeof viewMode.value) {
             label="Справка: режимы отображения списка"
             hint="Режимы списка: Список, По эпикам, Доска, По вехам. Плюс фильтры (проект, статус, веха, исполнитель, теги) и поиск по заголовку и описанию."
           />
-        </div>
+          <UButton icon="i-lucide-plus" color="primary" @click="createTaskModalOpen = true">Задача</UButton>
+        </template>
+      </template>
+
+      <div v-if="selectedIds.size === 0" class="flex flex-wrap items-center gap-2">
+        <UInput v-model="search" icon="i-lucide-search" placeholder="Поиск строки или #номер" class="w-[240px]" />
+        <USelectMenu v-model="projectId" :items="projectItems" value-key="value" icon="i-lucide-folder" placeholder="Проект" class="w-[170px]" />
+        <UTooltip :text="projectId ? 'База знаний проекта' : 'Сначала выберите проект'">
+          <UButton
+            :to="projectId ? `/projects/${projectId}/wiki` : undefined"
+            :disabled="!projectId"
+            icon="i-lucide-book-open"
+            variant="outline"
+            color="primary"
+            aria-label="База знаний"
+          />
+        </UTooltip>
+        <USelectMenu
+          v-model="statusId"
+          :items="statusItems"
+          value-key="value"
+          :disabled="!projectId || viewMode === 'board'"
+          icon="i-lucide-circle-dot"
+          placeholder="Статус"
+          class="w-[150px]"
+        />
+        <USelectMenu
+          v-model="milestoneFilter"
+          :items="milestoneFilterItems"
+          value-key="value"
+          :disabled="!projectId"
+          icon="i-lucide-diamond"
+          placeholder="Веха"
+          class="w-[150px]"
+        />
+        <USelectMenu v-model="assignedUserId" :items="userItems" value-key="value" :disabled="assignedToMe" icon="i-lucide-user" placeholder="Исполнитель" class="w-[170px]" />
+        <USelectMenu
+          v-model="taskType"
+          :items="typeItems"
+          value-key="value"
+          :disabled="viewMode !== 'list'"
+          icon="i-lucide-shapes"
+          placeholder="Вид"
+          class="w-[140px]"
+        />
+        <USelectMenu
+          v-if="allTags.length"
+          v-model="selectedTags"
+          :items="allTags"
+          multiple
+          icon="i-lucide-tag"
+          placeholder="Теги"
+          class="w-[170px]"
+        />
+        <UButton
+          icon="i-lucide-user-check"
+          :variant="assignedToMe ? 'solid' : 'outline'"
+          color="primary"
+          @click="assignedToMe = !assignedToMe"
+        >
+          Назначено мне
+        </UButton>
+        <UButton
+          icon="i-lucide-archive"
+          :variant="showArchived ? 'solid' : 'outline'"
+          color="primary"
+          @click="showArchived = !showArchived"
+        >
+          Архивные
+        </UButton>
+        <UButton v-if="hasActiveFilters" variant="link" color="primary" icon="i-lucide-x" @click="resetFilters">Сбросить</UButton>
       </div>
 
       <div v-else class="flex flex-wrap items-center gap-2">
