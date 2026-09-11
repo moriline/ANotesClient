@@ -737,7 +737,7 @@ async function submitTimeLog() {
   loggingTime.value = true
   try {
     const startTime = logDate.value ? new Date(`${logDate.value}T00:00:00`).getTime() : undefined
-    await logTime(taskIdNum.value, {
+    const entry = await logTime(taskIdNum.value, {
       seconds,
       description: logDescription.value.trim() || undefined,
       startTime
@@ -747,11 +747,39 @@ async function submitTimeLog() {
     logDescription.value = ''
     logDate.value = todayInput()
     await Promise.all([loadTime(), loadActivity()])
-    toast.add({ title: 'Время записано', color: 'primary' })
+    // Убывающая полоска + крестик тоста читаются как «окно отмены» (тот же
+    // паттерн, что у snackbar-ов «удалено — вернуть») — раньше кнопки отмены
+    // тут не было и запись оставалась залогированной несмотря на клик. Теперь
+    // «Отменить» реально удаляет только что созданную запись.
+    const created = toast.add({
+      title: 'Время записано',
+      color: 'primary',
+      actions: [{
+        label: 'Отменить',
+        color: 'primary',
+        variant: 'link',
+        onClick: () => {
+          toast.remove(created.id)
+          undoTimeLog(entry)
+        }
+      }]
+    })
   } catch (e) {
     toast.add({ title: 'Не удалось записать время', description: e instanceof ApiError ? e.message : undefined, color: 'error' })
   } finally {
     loggingTime.value = false
+  }
+}
+
+// Без confirm() — это и есть быстрая отмена по кнопке в тосте; обычное ручное
+// удаление строки в списке (removeTimeEntry) по-прежнему подтверждения просит.
+async function undoTimeLog(entry: TimeEntry) {
+  try {
+    await deleteTimeEntry(taskIdNum.value, entry.id)
+    await Promise.all([loadTime(), loadActivity()])
+    toast.add({ title: 'Запись отменена', color: 'primary' })
+  } catch (e) {
+    toast.add({ title: 'Не удалось отменить запись', description: e instanceof ApiError ? e.message : undefined, color: 'error' })
   }
 }
 
@@ -786,7 +814,9 @@ function humanizeAction(type: string): string {
           </span>
           <span>#{{ task.id }}</span>
           <span>·</span>
-          <span>{{ project?.name ?? `Проект #${projectIdNum}` }}</span>
+          <RouterLink :to="`/tasks?project=${projectIdNum}`" class="hover:text-primary">
+            {{ project?.name ?? `Проект #${projectIdNum}` }}
+          </RouterLink>
           <template v-if="task.parentId">
             <span>·</span>
             <RouterLink
@@ -877,7 +907,7 @@ function humanizeAction(type: string): string {
 
           <div class="mt-8 border-t border-default pt-6">
             <p class="mb-3 inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted">
-              Резюме (AI)
+              Резюме<template v-if="auth.agentToken"> (AI)</template>
               <HelpLink
                 topic="summary"
                 label="Справка: резюме задачи"

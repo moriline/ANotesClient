@@ -232,9 +232,15 @@ export function putSummary(ctx: Ctx) {
 
 // --- Учёт времени -------------------------------------------------------------
 
+// Баг был здесь: для эпика суммировались записи «на самом id» — а у эпика их
+// не бывает, время всегда висит на дочерних задачах (derive.ts делает это
+// правильно для дорожной карты, эта ручка — нет). GET /api/tasks/{id}/time на
+// живом бэкенде суммирует детей для эпика; повторяем то же самое здесь.
 export function timeTotal(ctx: Ctx) {
   const taskId = Number(ctx.params.taskId)
-  return db.timeEntries.filter(e => e.taskId === taskId).reduce((s, e) => s + e.seconds, 0)
+  const task = db.tasks.find(t => t.id === taskId)
+  const ids = task?.taskType === 'EPIC' ? childrenOf(db, taskId).map(k => k.id) : [taskId]
+  return db.timeEntries.filter(e => ids.includes(e.taskId)).reduce((s, e) => s + e.seconds, 0)
 }
 
 function toTimeEntry(e: (typeof db.timeEntries)[number]) {

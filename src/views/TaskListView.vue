@@ -65,16 +65,21 @@ const viewMode = ref<'list' | 'epics' | 'milestones' | 'board'>(
 // это тоже явный выбор (кто-то поделился ссылкой именно на такой режим).
 const userChangedMode = ref(!!route.query.view)
 
+// «Тип», не «Вид» — «вид» занят переключателем режима отображения страницы
+// (Список/По эпикам/По вехам/Доска), это разные оси и раньше назывались
+// одинаково, что читалось как дубль одного и того же контрола.
 const typeItems = [
-  { label: 'Все виды', value: undefined },
+  { label: 'Все типы', value: undefined },
   { label: 'Только задачи', value: 'TASK' as const },
   { label: 'Только эпики', value: 'EPIC' as const }
 ]
+// Иконки — не текст: сегментированный переключатель должен быть узким и не
+// участвовать в переносе строк вместе с фильтрами (см. комментарий у разметки).
 const viewItems = [
-  { label: 'Список', value: 'list' as const },
-  { label: 'По эпикам', value: 'epics' as const },
-  { label: 'По вехам', value: 'milestones' as const },
-  { label: 'Доска', value: 'board' as const }
+  { label: 'Список', value: 'list' as const, icon: 'i-lucide-list' },
+  { label: 'По эпикам', value: 'epics' as const, icon: 'i-lucide-package' },
+  { label: 'По вехам', value: 'milestones' as const, icon: 'i-lucide-diamond' },
+  { label: 'Доска', value: 'board' as const, icon: 'i-lucide-kanban' }
 ]
 
 const tasks = ref<TaskResponse[]>([])
@@ -501,6 +506,17 @@ onMounted(() => {
 onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
 function resetFilters() {
+  // В группировке/доске «Сбросить» должен убирать сужение, не выкидывая из
+  // текущего проекта — НО только если есть что убирать помимо самого проекта.
+  // Иначе (project/view — единственное выставленное, напр. прямая ссылка
+  // ?project=5&view=epics) сбрасывать нечего, и кнопка молча ничего не делает —
+  // тот самый баг. Поэтому: если, кроме project, что-то ещё активно — щадящий
+  // сброс (остаёмся в проекте/группировке); если project/view — единственное
+  // активное — сбрасываем и их тоже.
+  const otherFiltersActive = !!search.value || !!statusId.value || !!assignedUserId.value ||
+    assignedToMe.value || showArchived.value || selectedTags.value.length > 0 ||
+    !!taskType.value || milestoneFilter.value !== undefined
+
   search.value = ''
   statusId.value = undefined
   assignedUserId.value = undefined
@@ -510,9 +526,12 @@ function resetFilters() {
   taskType.value = undefined
   milestoneFilter.value = undefined
   page.value = 1
-  // В режимах группировки и «доска» проект и вид не сбрасываем: «сбросить
-  // фильтры» — это убрать сужение, а не выйти из проекта.
-  if (viewMode.value === 'list') projectId.value = undefined
+
+  if (viewMode.value === 'list' || !otherFiltersActive) {
+    projectId.value = undefined
+    viewMode.value = 'list'
+    userChangedMode.value = false
+  }
 }
 
 // Строка не кликабельна целиком (консистентно с /projects) — переход по задаче
@@ -631,38 +650,94 @@ async function bulkAssign() {
 }
 
 const openCount = computed(() => total.value)
+
+function selectViewMode(v: typeof viewMode.value) {
+  viewMode.value = v
+  userChangedMode.value = true
+}
 </script>
 
 <template>
   <div>
-    <PageHeader title="Задачи" :subtitle="`Найдено: ${openCount}`">
+    <PageHeader title="Задачи">
+      <template #title>
+        Задачи
+        <span class="text-[13px] font-normal text-muted">(Найдено: {{ openCount }})</span>
+      </template>
+      <template #actions>
+        <template v-if="selectedIds.size === 0">
+          <!-- В #actions, НЕ в ряду фильтров: это отдельный layout-блок в
+               строке заголовка (рендерит PageHeader сам, вне flex-wrap с
+               фильтрами) — сколько бы фильтров ни появилось/пропало ниже
+               (Сбросить, Теги), сюда это структурно не дотягивается. Три
+               попытки удержать переключатель вида в общем с фильтрами ряду
+               (через justify-between, через отдельную строку) всё равно
+               давали смещение при любом изменении состава фильтров —
+               единственный надёжный вариант оказался «не тот же контейнер». -->
+          <div class="inline-flex rounded-lg border border-default p-0.5">
+            <UTooltip v-for="v in viewItems" :key="v.value" :text="v.label">
+              <button
+                type="button"
+                class="flex items-center justify-center rounded-md p-1.5 transition-colors"
+                :class="viewMode === v.value ? 'bg-elevated text-highlighted' : 'text-muted hover:text-highlighted'"
+                :aria-label="v.label"
+                :aria-pressed="viewMode === v.value"
+                @click="selectViewMode(v.value)"
+              >
+                <UIcon :name="v.icon" class="size-4" />
+              </button>
+            </UTooltip>
+          </div>
+          <HelpLink
+            topic="task-list"
+            hash="views"
+            label="Справка: режимы отображения списка"
+            hint="Режимы списка: Список, По эпикам, Доска, По вехам. Плюс фильтры (проект, статус, веха, исполнитель, теги) и поиск по заголовку и описанию."
+          />
+          <UButton icon="i-lucide-plus" color="primary" @click="createTaskModalOpen = true">Задача</UButton>
+        </template>
+      </template>
+
       <div v-if="selectedIds.size === 0" class="flex flex-wrap items-center gap-2">
         <UInput v-model="search" icon="i-lucide-search" placeholder="Поиск строки или #номер" class="w-[240px]" />
-        <USelectMenu v-model="projectId" :items="projectItems" value-key="value" placeholder="Проект" class="w-[180px]" />
+        <USelectMenu v-model="projectId" :items="projectItems" value-key="value" icon="i-lucide-folder" placeholder="Проект" class="w-[170px]" />
+        <UTooltip :text="projectId ? 'База знаний проекта' : 'Сначала выберите проект'">
+          <UButton
+            :to="projectId ? `/projects/${projectId}/wiki` : undefined"
+            :disabled="!projectId"
+            icon="i-lucide-book-open"
+            variant="outline"
+            color="primary"
+            aria-label="База знаний"
+          />
+        </UTooltip>
         <USelectMenu
           v-model="statusId"
           :items="statusItems"
           value-key="value"
           :disabled="!projectId || viewMode === 'board'"
+          icon="i-lucide-circle-dot"
           placeholder="Статус"
-          class="w-[160px]"
+          class="w-[150px]"
         />
         <USelectMenu
           v-model="milestoneFilter"
           :items="milestoneFilterItems"
           value-key="value"
           :disabled="!projectId"
+          icon="i-lucide-diamond"
           placeholder="Веха"
-          class="w-[160px]"
+          class="w-[150px]"
         />
-        <USelectMenu v-model="assignedUserId" :items="userItems" value-key="value" :disabled="assignedToMe" placeholder="Исполнитель" class="w-[180px]" />
+        <USelectMenu v-model="assignedUserId" :items="userItems" value-key="value" :disabled="assignedToMe" icon="i-lucide-user" placeholder="Исполнитель" class="w-[170px]" />
         <USelectMenu
           v-model="taskType"
           :items="typeItems"
           value-key="value"
           :disabled="viewMode !== 'list'"
-          placeholder="Вид"
-          class="w-[150px]"
+          icon="i-lucide-shapes"
+          placeholder="Тип"
+          class="w-[140px]"
         />
         <USelectMenu
           v-if="allTags.length"
@@ -671,25 +746,25 @@ const openCount = computed(() => total.value)
           multiple
           icon="i-lucide-tag"
           placeholder="Теги"
-          class="w-[180px]"
+          class="w-[170px]"
         />
-        <UCheckbox v-model="assignedToMe" label="Назначено мне" />
-        <USwitch v-model="showArchived" label="Архивные" />
-        <USelectMenu
-          v-model="viewMode"
-          :items="viewItems"
-          value-key="value"
-          class="w-[140px]"
-          @update:model-value="userChangedMode = true"
-        />
-        <HelpLink
-          topic="task-list"
-          hash="views"
-          label="Справка: страница «Задачи»"
-          hint="Режимы списка: Список, По эпикам, Доска, По вехам. Плюс фильтры (проект, статус, веха, исполнитель, теги) и поиск по заголовку и описанию."
-        />
-        <UButton icon="i-lucide-plus" color="primary" @click="createTaskModalOpen = true">Задача</UButton>
-        <UButton v-if="hasActiveFilters" variant="outline" color="primary" icon="i-lucide-x" @click="resetFilters">Сбросить</UButton>
+        <UButton
+          icon="i-lucide-user-check"
+          :variant="assignedToMe ? 'solid' : 'outline'"
+          color="primary"
+          @click="assignedToMe = !assignedToMe"
+        >
+          Назначено мне
+        </UButton>
+        <UButton
+          icon="i-lucide-archive"
+          :variant="showArchived ? 'solid' : 'outline'"
+          color="primary"
+          @click="showArchived = !showArchived"
+        >
+          Архивные
+        </UButton>
+        <UButton v-if="hasActiveFilters" variant="link" color="primary" icon="i-lucide-x" @click="resetFilters">Сбросить</UButton>
       </div>
 
       <div v-else class="flex flex-wrap items-center gap-2">
