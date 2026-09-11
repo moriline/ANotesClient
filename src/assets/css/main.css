@@ -1,0 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+/*
+ * Тема из конфигуратора Nuxt UI Theme (ui.nuxt.com/theme):
+ *   цвета     — primary=violet, secondary=fuchsia, neutral=mauve (см. src/theme.ts)
+ *   radius    — 0.5rem
+ *   трекинг   — -0.01em
+ *   оттенки   — --ui-bg / --ui-bg-muted / --ui-text-inverted сдвинуты на neutral-50/100
+ *   варианты  — кнопки outline, поля ввода subtle (см. vite.config.ts)
+ * violet/fuchsia/mauve — штатные палитры Tailwind v4, отдельный @theme им не нужен.
+ */
+@theme static {
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+:root {
+  --ui-radius: 0.5rem;
+
+  /* tokenShades из конфигуратора. Тёмной темы нет (colorMode: false),
+     поэтому только светлые значения. */
+  --ui-bg: var(--ui-color-neutral-50);
+  --ui-bg-muted: var(--ui-color-neutral-100);
+  --ui-text-inverted: var(--ui-color-neutral-50);
+}
+
+body {
+  background: var(--ui-bg);
+  letter-spacing: -0.01em;
+}

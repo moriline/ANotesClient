@@ -1,0 +1,3555 @@
+# ANotes API — OpenAPI 3.0.3
+#
+# СГЕНЕРИРОВАНО из аннотаций ресурсов (quarkus-smallrye-openapi), не править руками.
+# Живая версия отдаётся приложением на /q/openapi (?format=yaml), Swagger UI — /q/swagger-ui.
+# Обновить этот снимок:
+#   mvn clean package -DskipTests
+#   java -jar target/quarkus-app/quarkus-run.jar        # затем
+#   curl -s "http://localhost:8080/q/openapi?format=yaml" -o openapi5.yaml
+#
+# Заменяет openAPI.yaml, openapi2.yaml, openapi3.yaml и openapi4.yaml: те писались
+# руками, расходились с кодом и между собой (см. коммит).
+---
+openapi: 3.0.3
+info:
+  title: ANotes API
+  description: REST API менеджера задач и базы знаний ANotes
+  version: 5.0.0
+paths:
+  /api/admin/users:
+    get:
+      tags:
+      - Admin User Resource
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminUserResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/admin/users/{id}:
+    delete:
+      tags:
+      - Admin User Resource
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/admin/users/{id}/status:
+    put:
+      tags:
+      - Admin User Resource
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUserStatusRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/agent/openapi.json:
+    get:
+      tags:
+      - Agent Open Api Resource
+      summary: OpenAPI для ИИ-агента
+      description: |
+        Подмножество основной спеки — операции, доступные агенту: поиск задач,
+        чтение и правка задачи, комментарии, резюме, списание времени, статусы
+        проекта, список проектов, эпики проекта, вики (дерево, страница,
+        поиск). Скормите этот документ модели как набор инструментов вместо
+        полного /q/openapi.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/auth/agent-token:
+    post:
+      tags:
+      - Auth Resource
+      summary: Выпустить токен для ИИ-агента
+      description: |
+        Возвращает второй JWT для того же пользователя: sub тот же, группы
+        USER+AGENT без ADMIN, срок 48 часов. Агент под ним читает и меняет
+        задачи в проектах пользователя, но не удаляет и не управляет
+        доступом — на попытку приходит 403 с пояснением.
+        В журнале активности значится человек, а не «Агент».
+        Рефреша нет: по истечении — снова этот запрос обычным токеном.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/auth/login:
+    post:
+      tags:
+      - Auth Resource
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+  /api/auth/register:
+    post:
+      tags:
+      - Auth Resource
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+  /api/comments/{commentId}:
+    put:
+      tags:
+      - Comment Resource
+      parameters:
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    delete:
+      tags:
+      - Comment Resource
+      parameters:
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/epics/{epicId}/tasks:
+    get:
+      tags:
+      - Epic Resource
+      summary: Задачи эпика
+      description: |
+        Дочерние задачи эпика в порядке создания. 404 — нет такого эпика или
+        нет доступа к его проекту; 400 — id принадлежит обычной задаче, а не
+        эпику.
+      parameters:
+      - name: epicId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TaskResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/files/download/{fileName}:
+    get:
+      tags:
+      - File Resource
+      parameters:
+      - name: fileName
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/files/projects/{projectId}/tasks/{taskId}:
+    post:
+      tags:
+      - File Resource
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  $ref: "#/components/schemas/FileUpload"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/files/tasks/{taskId}:
+    get:
+      tags:
+      - File Resource
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FileResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/files/{fileId}:
+    delete:
+      tags:
+      - File Resource
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/find:
+    post:
+      tags:
+      - Find Resource
+      summary: Найти задачи
+      description: |
+        Поиск задач в проектах, доступных вызывающему (свои + где он участник).
+        Все поля тела необязательны и комбинируются по И:
+          titleSearch   — подстрока в заголовке;
+          contentSearch — подстрока в описании, резюме и обсуждении задачи
+                          (так находятся прежние выводы агента);
+          projectId     — ограничить одним проектом (чужой → пустой результат);
+          assignedUserId / assignedToMe — по исполнителю (assignedToMe не
+                          возвращает эпики — у них нет исполнителя);
+          statusId      — по статусу (id из GET /api/project-statuses/project/{projectId});
+          taskType      — EPIC | TASK (не задан — оба);
+          parentId      — задачи конкретного эпика;
+          isArchived    — true/false;
+          grouped       — true: всё незакрытое одного проекта разом + все его
+                          эпики, без пагинации (для вида «по эпикам»);
+                          требует projectId, иначе 400; свыше порога задач — 400;
+          sortBy        — createdAt|updatedAt|dueDate|title, sortDir — asc|desc;
+          limit (≤200, по умолчанию 50), offset.
+        В ответе: tasks[] (каждая с projectId, statusId, assignedUserId, version)
+        и total — сколько подходит всего, помимо текущей страницы.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FindTasksRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResponseWrapper"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/milestones/{id}:
+    get:
+      tags:
+      - Milestone Resource
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MilestoneResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    put:
+      tags:
+      - Milestone Resource
+      summary: Изменить веху
+      description: |
+        Частичная правка: title, description, dueDate. Поле null — не трогать.
+        state не меняется — для этого /close и /reopen. Необязательный заголовок
+        X-Expected-Version: с устаревшим значением — 409. Нужно право task:update.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - name: X-Expected-Version
+        in: header
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MilestoneUpdateRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MilestoneResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    delete:
+      tags:
+      - Milestone Resource
+      summary: Удалить веху
+      description: |
+        Задач нет — 204. Задачи есть без параметра — 409 с их числом.
+        ?tasks=detach — задачам ставится milestoneId=null; ?tasks=move&to={id}
+        — задачи переносятся в другую (открытую, того же проекта) веху.
+        Задачи НЕ удаляются ни при каком варианте. Нужно право task:delete.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - name: tasks
+        in: query
+        schema:
+          type: string
+      - name: to
+        in: query
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/milestones/{id}/close:
+    put:
+      tags:
+      - Milestone Resource
+      summary: Закрыть веху
+      description: |
+        Закрытие с незавершёнными задачами разрешено (релиз выпускают и с
+        недоделанными пунктами) — но событие пишется в журнал отдельным типом
+        MILESTONE_CLOSED_INCOMPLETE. Повторное закрытие — 400. Нужно право task:update.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MilestoneResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/milestones/{id}/reopen:
+    put:
+      tags:
+      - Milestone Resource
+      summary: Открыть веху заново
+      description: Повторное открытие — 400. Нужно право task:update.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MilestoneResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/milestones/{id}/tasks:
+    get:
+      tags:
+      - Milestone Resource
+      summary: Задачи вехи
+      description: "Задачи, привязанные к вехе. У каждой parentId — из какого она\
+        \ эпика (веха собирает работу из разных эпиков)."
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TaskResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/notifications:
+    get:
+      tags:
+      - Notification Resource
+      summary: Мои уведомления
+      description: "Лента колокольчика, новые сверху. unread=true — только непрочи\
+        танные."
+      parameters:
+      - name: limit
+        in: query
+        schema:
+          format: int32
+          type: integer
+      - name: unread
+        in: query
+        schema:
+          type: boolean
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NotificationResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/notifications/count:
+    get:
+      tags:
+      - Notification Resource
+      summary: Число непрочитанных
+      description: "Одно число для значка на колокольчике: { \"unread\": 3 }."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnreadCountResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/notifications/read-all:
+    put:
+      tags:
+      - Notification Resource
+      summary: Отметить все прочитанными
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/notifications/settings:
+    get:
+      tags:
+      - Notification Resource
+      summary: Настройки уведомлений
+      description: По строке на каждый тип события с действующим значением переключателя
+        in-app.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NotificationSettingResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/notifications/settings/{type}:
+    put:
+      tags:
+      - Notification Resource
+      summary: Включить/выключить тип уведомлений
+      description: "Выключенный тип не создаёт записей вовсе. type: MENTION | ASSIGNED\
+        \ | COMMENT | STATUS_CHANGED."
+      parameters:
+      - name: type
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationSettingRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NotificationSettingResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/notifications/{id}/read:
+    put:
+      tags:
+      - Notification Resource
+      summary: Отметить уведомление прочитанным
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/permissions/check:
+    post:
+      tags:
+      - Permission Resource
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PermissionCheckRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: boolean
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/project-statuses:
+    post:
+      tags:
+      - Project Status Resource
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectStatusRequest"
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/project-statuses/project/{projectId}:
+    get:
+      tags:
+      - Project Status Resource
+      summary: Статусы проекта
+      description: |
+        Допустимые статусы задач этого проекта, по порядку на доске, с id,
+        названием, флагами isDefault и isClosed. Вызывать перед сменой
+        статуса задачи: в PATCH /api/projects/{projectId}/tasks/{taskId}
+        идёт statusId именно отсюда, чужой статус → 400.
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectStatusResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/project-statuses/{statusId}:
+    put:
+      tags:
+      - Project Status Resource
+      parameters:
+      - name: statusId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectStatusUpdateRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectStatusResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/projects:
+    get:
+      tags:
+      - Project Resource
+      summary: Проекты пользователя
+      description: |
+        Проекты, доступные вызывающему: свои плюс те, где он участник.
+        Агент видит ровно тот же список, что его человек. У каждого проекта
+        есть id — он нужен для GET /api/project-statuses/project/{id} и для
+        путей задач /api/projects/{projectId}/tasks/...
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    post:
+      tags:
+      - Project Resource
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectRequest"
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/projects/appearance:
+    get:
+      tags:
+      - Project Appearance Resource
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectAppearanceResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/projects/{id}:
+    get:
+      tags:
+      - Project Resource
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    delete:
+      tags:
+      - Project Resource
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    patch:
+      tags:
+      - Project Resource
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectUpdateRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/projects/{id}/epics:
+    get:
+      tags:
+      - Project Resource
+      summary: Эпики проекта
+      description: |
+        Эпики проекта с прогрессом по дочерним задачам: childTotal / childDone
+        (по флагу isClosed их статусов) и epicClosed. Один запрос прогресса на
+        всю страницу, не по запросу на эпик. Агенту стоит вызвать это перед
+        созданием задач — чтобы понимать структуру работы.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TaskResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/projects/{id}/tags:
+    get:
+      tags:
+      - Project Resource
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/projects/{projectId}/activity:
+    get:
+      tags:
+      - Project Activity Resource
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - name: limit
+        in: query
+        schema:
+          format: int32
+          type: integer
+      - name: offset
+        in: query
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/projects/{projectId}/members:
+    get:
+      tags:
+      - Project Member Resource
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectMemberResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    post:
+      tags:
+      - Project Member Resource
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectMemberRequest"
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/projects/{projectId}/members/{userId}:
+    put:
+      tags:
+      - Project Member Resource
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - name: userId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectMemberRoleRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMemberResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    delete:
+      tags:
+      - Project Member Resource
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - name: userId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/projects/{projectId}/milestones:
+    get:
+      tags:
+      - Project Milestone Resource
+      summary: Вехи проекта
+      description: |
+        Вехи проекта по возрастанию срока, с прогрессом (taskTotal/taskDone/
+        taskOverdue) и вычисленным state (PLANNED|IN_PROGRESS|READY|AT_RISK|
+        LATE|CLOSED). Один запрос прогресса на весь список.
+        ?state=open|closed|all (по умолчанию all).
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - name: state
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MilestoneResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    post:
+      tags:
+      - Project Milestone Resource
+      summary: Создать веху
+      description: |
+        { title, description?, dueDate } — dueDate обязателен (epoch-ms),
+        веха без даты бессмысленна. Дубль названия в проекте — 409.
+        Нужно право task:update.
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MilestoneRequest"
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/projects/{projectId}/roadmap:
+    get:
+      tags:
+      - Roadmap Resource
+      summary: Роадмап проекта
+      description: |
+        Временная шкала эпиков: одна полоса — один эпик, от startDate до
+        dueDate, заливка по childDone/childTotal. Даты эпика приоритетны;
+        если их нет — выводятся по задачам (MIN start/created, MAX due),
+        флаг datesInferred. Эпики без дат вообще — в undated, не прячутся.
+        from/to (ГГГГ-ММ-ДД) задают край шкалы; без них — по эпикам ± неделя.
+        state (NOT_STARTED|IN_PROGRESS|DONE|AT_RISK|OVERDUE) и childOverdue
+        считаются на сервере. Виден участнику проекта; свыше предела эпиков — 400.
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - name: from
+        in: query
+        schema:
+          type: string
+      - name: to
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoadmapResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/projects/{projectId}/tasks:
+    get:
+      tags:
+      - Task Resource
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TaskResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    post:
+      tags:
+      - Task Resource
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskRequest"
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/projects/{projectId}/tasks/{taskId}:
+    get:
+      tags:
+      - Task Resource
+      summary: Получить задачу по номеру
+      description: |
+        Возвращает задачу целиком: заголовок, описание, статус (statusId),
+        исполнителя (assignedUserId), теги, сроки, оценку, суммарное списанное
+        время и version (нужен для X-Expected-Version при PATCH).
+        Комментарии не входят — их отдаёт GET /api/tasks/{taskId}/comments,
+        резюме — GET /api/tasks/{taskId}/summary.
+        projectId и taskId есть в каждом элементе ответа POST /api/find.
+      parameters:
+      - name: projectId
+        in: path
+        description: id проекта задачи (поле projectId из результата /api/find)
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    delete:
+      tags:
+      - Task Resource
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - name: children
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    patch:
+      tags:
+      - Task Resource
+      summary: Изменить задачу
+      description: |
+        Частичное обновление: любое подмножество полей title, description,
+        tags, assignedUserId, statusId, dueDate, startDate (epoch-ms),
+        estimatedHours, isArchived. Поле, которого нет в теле, не меняется.
+        Смена статуса: statusId берётся из GET /api/project-statuses/project/{projectId};
+        чужой статус или исполнитель не из проекта → 400.
+        Нужно право task:update. Агенту это разрешено; удаление задачи (DELETE)
+        агенту запрещено — вернётся 403.
+        Заголовок X-Expected-Version = version из прочитанной карточки: если
+        задачу тем временем изменили, придёт 409 вместо перезаписи. Каждый
+        успешный PATCH увеличивает version на 1.
+      parameters:
+      - name: projectId
+        in: path
+        description: id проекта задачи (поле projectId из результата /api/find)
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - name: X-Expected-Version
+        in: header
+        description: "version задачи, прочитанный перед правкой; при расхождении —\
+          \ 409"
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskUpdateRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/projects/{projectId}/wiki:
+    get:
+      tags:
+      - Project Wiki Resource
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WikiTreeNodeResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    post:
+      tags:
+      - Project Wiki Resource
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WikiPageRequest"
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/reports/time:
+    get:
+      tags:
+      - Time Report Resource
+      parameters:
+      - name: month
+        in: query
+        schema:
+          format: int32
+          type: integer
+      - name: userId
+        in: query
+        schema:
+          format: int32
+          type: integer
+      - name: year
+        in: query
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TimeReportResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/reports/time/project/{projectId}:
+    get:
+      tags:
+      - Time Report Resource
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - name: month
+        in: query
+        schema:
+          format: int32
+          type: integer
+      - name: year
+        in: query
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectTimeReportResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/roles:
+    get:
+      tags:
+      - Role Resource
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RoleResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/tasks/{taskId}/activity:
+    get:
+      tags:
+      - Task Activity Resource
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - name: limit
+        in: query
+        schema:
+          format: int32
+          type: integer
+      - name: offset
+        in: query
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/tasks/{taskId}/comments:
+    get:
+      tags:
+      - Task Comment Resource
+      summary: Комментарии задачи
+      description: |
+        Все комментарии задачи в порядке добавления, с автором и временем.
+        INTERNAL-комментарии видны только команде проекта, не заказчику.
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CommentResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    post:
+      tags:
+      - Task Comment Resource
+      summary: Оставить комментарий к задаче
+      description: |
+        Добавляет комментарий от имени вызывающего (для агента — от имени
+        его человека). Поле content обязательно; visibility необязательно
+        (PUBLIC по умолчанию, INTERNAL — только команда).
+        Доступно участнику проекта. Удаление комментария агенту запрещено.
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentRequest"
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/tasks/{taskId}/convert:
+    put:
+      tags:
+      - Task Convert Resource
+      summary: Сменить вид задачи
+      description: |
+        { "to": "EPIC" | "TASK" }. TASK -> EPIC снимает исполнителя и статус;
+        отказ (400), если задача входит в эпик или на неё списано время.
+        EPIC -> TASK отказывает (400), если внутри эпика есть задачи.
+        Нужно право task:update.
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskConvertRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/tasks/{taskId}/discussion:
+    get:
+      tags:
+      - Task Discussion Resource
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DiscussionBlockResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    put:
+      tags:
+      - Task Discussion Resource
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/DiscussionBlockRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DiscussionBlockResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    post:
+      tags:
+      - Task Discussion Resource
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiscussionBlockRequest"
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/tasks/{taskId}/milestone:
+    put:
+      tags:
+      - Task Milestone Resource
+      summary: Привязать задачу к вехе
+      description: |
+        { "milestoneId": N } привязывает или переносит; { "milestoneId": null }
+        (или пустое тело) отвязывает. Веха должна быть открытой и в том же
+        проекте (400); эпик к вехе привязать нельзя (400). В ответе
+        milestoneReady=true, если этой правкой все задачи вехи стали закрыты, а
+        веха ещё открыта. Нужно право task:update.
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskMilestoneRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/tasks/{taskId}/parent:
+    put:
+      tags:
+      - Task Parent Resource
+      summary: Привязать задачу к эпику
+      description: |
+        Задаёт эпик-родитель задачи: parentId — id эпика того же проекта;
+        parentId=null (или пустое тело) отвязывает от эпика. Родителем может
+        быть только эпик и только из того же проекта, эпик привязать нельзя
+        (400). Нужно право task:update.
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskParentRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/tasks/{taskId}/summary:
+    get:
+      tags:
+      - Task Summary Resource
+      summary: Прочитать резюме задачи
+      description: "Текущее краткое резюме задачи и его источник (AI или MANUAL).\
+        \ null, если резюме ещё не писали."
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskSummaryResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    put:
+      tags:
+      - Task Summary Resource
+      summary: Записать резюме задачи
+      description: |
+        Перезаписывает поле summary целиком. Резюме — 2–4 предложения для
+        человека, который видит задачу впервые: суть работы, принятые решения,
+        изменённые сроки, выявленные ограничения. Пустая строка стирает резюме.
+        Поле summary обязательно в теле. version задачи не меняется.
+        Нужно право task:update; агенту разрешено.
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskSummaryRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskSummaryResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/tasks/{taskId}/time:
+    get:
+      tags:
+      - Time Entry Resource
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                format: int64
+                type: integer
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    post:
+      tags:
+      - Time Entry Resource
+      summary: Списать время на задачу
+      description: |
+        Добавляет запись о работе от имени вызывающего (для агента — его
+        человека). seconds — положительное число секунд, обязательно.
+        description необязательно. startTime (epoch-ms) — момент работы для
+        записей задним числом; без него берётся текущее время, и по нему же
+        идут месячные/годовые отчёты. Нужно право task:update; агенту разрешено.
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TimeEntryRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TimeEntry"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/tasks/{taskId}/time/entries:
+    get:
+      tags:
+      - Time Entry Resource
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TimeEntry"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/tasks/{taskId}/time/entries/{entryId}:
+    delete:
+      tags:
+      - Time Entry Resource
+      parameters:
+      - name: entryId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/tasks/{taskId}/wiki:
+    get:
+      tags:
+      - Task Wiki Resource
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WikiBacklinkResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/users:
+    get:
+      tags:
+      - User Resource
+      parameters:
+      - name: limit
+        in: query
+        schema:
+          format: int32
+          type: integer
+      - name: q
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserSummary"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/users/me:
+    get:
+      tags:
+      - User Resource
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    put:
+      tags:
+      - User Resource
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/users/me/password:
+    put:
+      tags:
+      - User Resource
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/wiki/find:
+    post:
+      tags:
+      - Wiki Resource
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WikiFindRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiFindResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/wiki/revisions/{revisionId}:
+    get:
+      tags:
+      - Wiki Resource
+      parameters:
+      - name: revisionId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiRevisionDetailResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/wiki/{pageId}:
+    get:
+      tags:
+      - Wiki Resource
+      parameters:
+      - name: pageId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiPageResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    put:
+      tags:
+      - Wiki Resource
+      parameters:
+      - name: pageId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - name: X-Expected-Version
+        in: header
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WikiPageUpdateRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiPageResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    delete:
+      tags:
+      - Wiki Resource
+      parameters:
+      - name: pageId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - name: cascade
+        in: query
+        schema:
+          default: false
+          type: boolean
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/wiki/{pageId}/backlinks:
+    get:
+      tags:
+      - Wiki Resource
+      parameters:
+      - name: pageId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WikiBacklinkResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/wiki/{pageId}/revisions:
+    get:
+      tags:
+      - Wiki Resource
+      parameters:
+      - name: pageId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WikiRevisionResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /config/ai:
+    get:
+      tags:
+      - Config Resource
+      responses:
+        "200":
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /test/ai/embed:
+    get:
+      tags:
+      - Ai Test Resource
+      responses:
+        "200":
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+components:
+  schemas:
+    ActivityResponse:
+      type: object
+      properties:
+        id:
+          format: int32
+          type: integer
+        projectId:
+          format: int32
+          type: integer
+        taskId:
+          format: int32
+          type: integer
+        userId:
+          format: int32
+          type: integer
+        username:
+          type: string
+        actionType:
+          type: string
+        details:
+          type: object
+          additionalProperties: {}
+        visibility:
+          $ref: "#/components/schemas/Visibility"
+        actorType:
+          $ref: "#/components/schemas/ActorType"
+        actorSession:
+          type: string
+        createdAt:
+          $ref: "#/components/schemas/Instant"
+    ActorType:
+      enum:
+      - HUMAN
+      - AGENT
+      type: string
+    AdminUserResponse:
+      type: object
+      properties:
+        id:
+          format: int32
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: string
+        avatarUrl:
+          type: string
+        isActive:
+          type: boolean
+        isAdmin:
+          type: boolean
+        createdAt:
+          format: int64
+          type: integer
+        updatedAt:
+          format: int64
+          type: integer
+    AdminUserStatusRequest:
+      type: object
+      properties:
+        isActive:
+          type: boolean
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        username:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+    BlockType:
+      enum:
+      - MESSAGE
+      - DECISION
+      - QUESTION
+      - PROPOSAL
+      type: string
+    ChangePasswordRequest:
+      required:
+      - currentPassword
+      - newPassword
+      type: object
+      properties:
+        currentPassword:
+          pattern: \S
+          type: string
+        newPassword:
+          maxLength: 100
+          minLength: 6
+          pattern: \S
+          type: string
+    CommentRequest:
+      required:
+      - content
+      type: object
+      properties:
+        content:
+          pattern: \S
+          type: string
+        visibility:
+          $ref: "#/components/schemas/Visibility"
+    CommentResponse:
+      type: object
+      properties:
+        id:
+          format: int32
+          type: integer
+        taskId:
+          format: int32
+          type: integer
+        userId:
+          format: int32
+          type: integer
+        content:
+          type: string
+        visibility:
+          $ref: "#/components/schemas/Visibility"
+        actorType:
+          $ref: "#/components/schemas/ActorType"
+        createdAt:
+          $ref: "#/components/schemas/Instant"
+        isEdited:
+          type: boolean
+        updatedAt:
+          $ref: "#/components/schemas/Instant"
+    DiscussionBlockRequest:
+      required:
+      - content
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        parentId:
+          $ref: "#/components/schemas/UUID"
+        author:
+          type: string
+        type:
+          $ref: "#/components/schemas/BlockType"
+        content:
+          pattern: \S
+          type: string
+    DiscussionBlockResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        parentId:
+          $ref: "#/components/schemas/UUID"
+        author:
+          type: string
+        type:
+          $ref: "#/components/schemas/BlockType"
+        content:
+          type: string
+        level:
+          format: int32
+          type: integer
+        createdAt:
+          $ref: "#/components/schemas/Instant"
+    FileResponse:
+      type: object
+      properties:
+        id:
+          format: int32
+          type: integer
+        taskId:
+          format: int32
+          type: integer
+        projectId:
+          format: int32
+          type: integer
+        fileName:
+          type: string
+        fileOriginalName:
+          type: string
+        fileSize:
+          format: int64
+          type: integer
+        mimeType:
+          type: string
+        fileUrl:
+          type: string
+        uploadedByUserId:
+          format: int32
+          type: integer
+        createdAt:
+          $ref: "#/components/schemas/Instant"
+    FileUpload:
+      type: object
+    FindTasksRequest:
+      type: object
+      properties:
+        projectId:
+          format: int32
+          type: integer
+        titleSearch:
+          type: string
+        contentSearch:
+          type: string
+        assignedUserId:
+          format: int32
+          type: integer
+        assignedToMe:
+          type: boolean
+        statusId:
+          format: int32
+          type: integer
+        taskType:
+          $ref: "#/components/schemas/TaskType"
+        parentId:
+          format: int32
+          type: integer
+        milestoneId:
+          format: int32
+          type: integer
+        noMilestone:
+          type: boolean
+        grouped:
+          type: boolean
+        isArchived:
+          type: boolean
+        sortBy:
+          type: string
+        sortDir:
+          type: string
+        limit:
+          format: int32
+          type: integer
+        offset:
+          format: int32
+          type: integer
+    Instant:
+      format: date-time
+      type: string
+      example: 2022-03-10T16:15:50Z
+    LoginRequest:
+      required:
+      - username
+      - password
+      type: object
+      properties:
+        username:
+          pattern: \S
+          type: string
+        password:
+          pattern: \S
+          type: string
+    MilestoneRequest:
+      required:
+      - title
+      - dueDate
+      type: object
+      properties:
+        title:
+          maxLength: 200
+          pattern: \S
+          type: string
+        description:
+          type: string
+        dueDate:
+          format: int64
+          type: integer
+    MilestoneResponse:
+      type: object
+      properties:
+        id:
+          format: int32
+          type: integer
+        projectId:
+          format: int32
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        dueDate:
+          format: int64
+          type: integer
+        state:
+          $ref: "#/components/schemas/MilestoneState"
+        taskTotal:
+          format: int32
+          type: integer
+        taskDone:
+          format: int32
+          type: integer
+        taskOverdue:
+          format: int32
+          type: integer
+        closedAt:
+          format: int64
+          type: integer
+        closedByName:
+          type: string
+        createdAt:
+          format: int64
+          type: integer
+        updatedAt:
+          format: int64
+          type: integer
+        version:
+          format: int32
+          type: integer
+    MilestoneState:
+      enum:
+      - PLANNED
+      - IN_PROGRESS
+      - READY
+      - AT_RISK
+      - LATE
+      - CLOSED
+      type: string
+    MilestoneUpdateRequest:
+      type: object
+      properties:
+        title:
+          maxLength: 200
+          minLength: 1
+          type: string
+        description:
+          type: string
+        dueDate:
+          format: int64
+          type: integer
+    NotificationResponse:
+      type: object
+      properties:
+        id:
+          format: int32
+          type: integer
+        type:
+          type: string
+        taskId:
+          format: int32
+          type: integer
+        commentId:
+          format: int32
+          type: integer
+        actorId:
+          format: int32
+          type: integer
+        actorUsername:
+          type: string
+        text:
+          type: string
+        read:
+          type: boolean
+        createdAt:
+          $ref: "#/components/schemas/Instant"
+    NotificationSettingRequest:
+      required:
+      - inApp
+      type: object
+      properties:
+        inApp:
+          type: boolean
+    NotificationSettingResponse:
+      type: object
+      properties:
+        type:
+          type: string
+        inApp:
+          type: boolean
+    PermissionCheckRequest:
+      type: object
+      properties:
+        userId:
+          format: int32
+          type: integer
+        projectId:
+          format: int32
+          type: integer
+        action:
+          type: string
+    ProjectAppearanceResponse:
+      type: object
+      properties:
+        colors:
+          type: array
+          items:
+            type: string
+        icons:
+          type: array
+          items:
+            type: string
+    ProjectMemberRequest:
+      required:
+      - userId
+      - roleId
+      type: object
+      properties:
+        userId:
+          format: int32
+          type: integer
+        roleId:
+          format: int32
+          type: integer
+    ProjectMemberResponse:
+      type: object
+      properties:
+        id:
+          format: int32
+          type: integer
+        projectId:
+          format: int32
+          type: integer
+        userId:
+          format: int32
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: string
+        roleId:
+          format: int32
+          type: integer
+        roleName:
+          type: string
+        joinedAt:
+          format: int64
+          type: integer
+    ProjectMemberRoleRequest:
+      required:
+      - roleId
+      type: object
+      properties:
+        roleId:
+          format: int32
+          type: integer
+    ProjectRequest:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          maxLength: 50
+          minLength: 3
+          pattern: \S
+          type: string
+        description:
+          type: string
+        color:
+          pattern: "#[0-9A-Fa-f]{6}"
+          type: string
+        icon:
+          maxLength: 50
+          type: string
+        tags:
+          maxItems: 30
+          type: array
+          items:
+            type: string
+    ProjectResponse:
+      type: object
+      properties:
+        id:
+          format: int32
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        ownerUserId:
+          format: int32
+          type: integer
+        color:
+          type: string
+        icon:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+        createdAt:
+          $ref: "#/components/schemas/Instant"
+        updatedAt:
+          $ref: "#/components/schemas/Instant"
+    ProjectStatusRequest:
+      type: object
+      properties:
+        projectId:
+          format: int32
+          type: integer
+        statusName:
+          type: string
+        statusColor:
+          type: string
+        statusOrder:
+          format: int32
+          type: integer
+        isDefault:
+          type: boolean
+        isClosed:
+          type: boolean
+    ProjectStatusResponse:
+      type: object
+      properties:
+        id:
+          format: int32
+          type: integer
+        projectId:
+          format: int32
+          type: integer
+        statusName:
+          type: string
+        statusColor:
+          type: string
+        statusOrder:
+          format: int32
+          type: integer
+        isDefault:
+          type: boolean
+        isClosed:
+          type: boolean
+        isHidden:
+          type: boolean
+    ProjectStatusUpdateRequest:
+      type: object
+      properties:
+        statusName:
+          maxLength: 50
+          minLength: 1
+          type: string
+        statusColor:
+          maxLength: 7
+          type: string
+        statusOrder:
+          format: int32
+          type: integer
+        isClosed:
+          type: boolean
+        isHidden:
+          type: boolean
+    ProjectTimeLine:
+      type: object
+      properties:
+        projectId:
+          format: int32
+          type: integer
+        projectName:
+          type: string
+        totalSeconds:
+          format: int64
+          type: integer
+        totalHours:
+          format: double
+          type: number
+        entryCount:
+          format: int32
+          type: integer
+    ProjectTimeReportResponse:
+      type: object
+      properties:
+        projectId:
+          format: int32
+          type: integer
+        projectName:
+          type: string
+        year:
+          format: int32
+          type: integer
+        month:
+          format: int32
+          type: integer
+        from:
+          format: int64
+          type: integer
+        to:
+          format: int64
+          type: integer
+        totalSeconds:
+          format: int64
+          type: integer
+        totalHours:
+          format: double
+          type: number
+        entryCount:
+          format: int32
+          type: integer
+        byUser:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserTimeLine"
+    ProjectUpdateRequest:
+      type: object
+      properties:
+        name:
+          maxLength: 50
+          minLength: 3
+          type: string
+        description:
+          type: string
+        color:
+          pattern: "#[0-9A-Fa-f]{6}"
+          type: string
+        icon:
+          maxLength: 50
+          type: string
+        tags:
+          maxItems: 30
+          type: array
+          items:
+            type: string
+    RegisterRequest:
+      required:
+      - username
+      - email
+      - password
+      type: object
+      properties:
+        username:
+          maxLength: 50
+          minLength: 3
+          pattern: \S
+          type: string
+        email:
+          pattern: \S
+          type: string
+        password:
+          maxLength: 100
+          minLength: 6
+          pattern: \S
+          type: string
+    ResponseWrapper:
+      type: object
+      properties:
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskResponse"
+        total:
+          format: int64
+          type: integer
+        limit:
+          format: int32
+          type: integer
+        offset:
+          format: int32
+          type: integer
+    RoadmapItem:
+      type: object
+      properties:
+        id:
+          format: int32
+          type: integer
+        title:
+          type: string
+        startDate:
+          format: int64
+          type: integer
+        dueDate:
+          format: int64
+          type: integer
+        datesInferred:
+          type: boolean
+        childTotal:
+          format: int32
+          type: integer
+        childDone:
+          format: int32
+          type: integer
+        childOverdue:
+          format: int32
+          type: integer
+        state:
+          $ref: "#/components/schemas/RoadmapState"
+        spentSeconds:
+          format: int64
+          type: integer
+    RoadmapResponse:
+      type: object
+      properties:
+        rangeFrom:
+          format: int64
+          type: integer
+        rangeTo:
+          format: int64
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoadmapItem"
+        undated:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoadmapItem"
+    RoadmapState:
+      enum:
+      - NOT_STARTED
+      - IN_PROGRESS
+      - DONE
+      - AT_RISK
+      - OVERDUE
+      type: string
+    RoleResponse:
+      type: object
+      properties:
+        id:
+          format: int32
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+    TaskConvertRequest:
+      required:
+      - to
+      type: object
+      properties:
+        to:
+          $ref: "#/components/schemas/TaskType"
+    TaskMilestoneRequest:
+      type: object
+      properties:
+        milestoneId:
+          format: int32
+          type: integer
+    TaskParentRequest:
+      type: object
+      properties:
+        parentId:
+          format: int32
+          type: integer
+    TaskRequest:
+      required:
+      - title
+      type: object
+      properties:
+        title:
+          pattern: \S
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        taskType:
+          $ref: "#/components/schemas/TaskType"
+        parentId:
+          format: int32
+          type: integer
+        milestoneId:
+          format: int32
+          type: integer
+    TaskResponse:
+      type: object
+      properties:
+        id:
+          format: int32
+          type: integer
+        projectId:
+          format: int32
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        summary:
+          type: string
+        creatorUserId:
+          format: int32
+          type: integer
+        assignedUserId:
+          format: int32
+          type: integer
+        statusId:
+          format: int32
+          type: integer
+        dueDate:
+          format: int64
+          type: integer
+        startDate:
+          format: int64
+          type: integer
+        estimatedHours:
+          format: double
+          type: number
+        tags:
+          type: array
+          items:
+            type: string
+        isArchived:
+          type: boolean
+        createdAt:
+          $ref: "#/components/schemas/Instant"
+        updatedAt:
+          $ref: "#/components/schemas/Instant"
+        version:
+          format: int32
+          type: integer
+        taskType:
+          $ref: "#/components/schemas/TaskType"
+        parentId:
+          format: int32
+          type: integer
+        parentTitle:
+          type: string
+        childTotal:
+          format: int32
+          type: integer
+        childDone:
+          format: int32
+          type: integer
+        epicClosed:
+          type: boolean
+        milestoneId:
+          format: int32
+          type: integer
+        milestoneTitle:
+          type: string
+        milestoneDueDate:
+          format: int64
+          type: integer
+        milestoneReady:
+          type: boolean
+    TaskSummaryRequest:
+      required:
+      - summary
+      type: object
+      properties:
+        summary:
+          type: string
+    TaskSummaryResponse:
+      type: object
+      properties:
+        taskId:
+          format: int32
+          type: integer
+        summary:
+          type: string
+        updatedAt:
+          $ref: "#/components/schemas/Instant"
+    TaskType:
+      enum:
+      - TASK
+      - EPIC
+      type: string
+    TaskUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        assignedUserId:
+          format: int32
+          type: integer
+        statusId:
+          format: int32
+          type: integer
+        dueDate:
+          format: int64
+          type: integer
+        startDate:
+          format: int64
+          type: integer
+        estimatedHours:
+          format: double
+          type: number
+        isArchived:
+          type: boolean
+    TimeEntry:
+      type: object
+      properties:
+        id:
+          format: int32
+          type: integer
+        taskId:
+          format: int32
+          type: integer
+        userId:
+          format: int32
+          type: integer
+        seconds:
+          format: int64
+          type: integer
+        description:
+          type: string
+        startTime:
+          $ref: "#/components/schemas/Instant"
+        createdAt:
+          $ref: "#/components/schemas/Instant"
+    TimeEntryRequest:
+      required:
+      - seconds
+      type: object
+      properties:
+        seconds:
+          format: int64
+          minimum: 0
+          exclusiveMinimum: true
+          type: integer
+        description:
+          type: string
+        startTime:
+          format: int64
+          type: integer
+    TimeReportResponse:
+      type: object
+      properties:
+        userId:
+          format: int32
+          type: integer
+        username:
+          type: string
+        year:
+          format: int32
+          type: integer
+        month:
+          format: int32
+          type: integer
+        from:
+          format: int64
+          type: integer
+        to:
+          format: int64
+          type: integer
+        totalSeconds:
+          format: int64
+          type: integer
+        totalHours:
+          format: double
+          type: number
+        entryCount:
+          format: int32
+          type: integer
+        byProject:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectTimeLine"
+    UUID:
+      format: uuid
+      pattern: "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+      type: string
+    UnreadCountResponse:
+      type: object
+      properties:
+        unread:
+          format: int64
+          type: integer
+    UpdateProfileRequest:
+      type: object
+      properties:
+        displayName:
+          maxLength: 100
+          minLength: 1
+          type: string
+        email:
+          maxLength: 100
+          type: string
+        avatarUrl:
+          maxLength: 255
+          type: string
+    UserProfile:
+      type: object
+      properties:
+        id:
+          format: int32
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: string
+        avatarUrl:
+          type: string
+    UserSummary:
+      type: object
+      properties:
+        id:
+          format: int32
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: string
+        avatarUrl:
+          type: string
+    UserTimeLine:
+      type: object
+      properties:
+        userId:
+          format: int32
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: string
+        totalSeconds:
+          format: int64
+          type: integer
+        totalHours:
+          format: double
+          type: number
+        entryCount:
+          format: int32
+          type: integer
+    Visibility:
+      enum:
+      - PUBLIC
+      - INTERNAL
+      - SYSTEM
+      type: string
+    WikiBacklinkResponse:
+      type: object
+      properties:
+        pageId:
+          format: int32
+          type: integer
+        projectId:
+          format: int32
+          type: integer
+        title:
+          type: string
+    WikiFindRequest:
+      type: object
+      properties:
+        projectId:
+          format: int32
+          type: integer
+        titleSearch:
+          type: string
+        contentSearch:
+          type: string
+        limit:
+          format: int32
+          type: integer
+        offset:
+          format: int32
+          type: integer
+    WikiFindResponse:
+      type: object
+      properties:
+        pages:
+          type: array
+          items:
+            $ref: "#/components/schemas/WikiPageResponse"
+        total:
+          format: int64
+          type: integer
+        limit:
+          format: int32
+          type: integer
+        offset:
+          format: int32
+          type: integer
+    WikiPageRequest:
+      required:
+      - title
+      - summary
+      - content
+      type: object
+      properties:
+        parentId:
+          format: int32
+          type: integer
+        title:
+          maxLength: 200
+          pattern: \S
+          type: string
+        summary:
+          maxLength: 500
+          pattern: \S
+          type: string
+        content:
+          pattern: \S
+          type: string
+        comment:
+          maxLength: 300
+          type: string
+    WikiPageResponse:
+      type: object
+      properties:
+        id:
+          format: int32
+          type: integer
+        projectId:
+          format: int32
+          type: integer
+        parentId:
+          format: int32
+          type: integer
+        title:
+          type: string
+        summary:
+          type: string
+        content:
+          type: string
+        position:
+          format: int32
+          type: integer
+        createdBy:
+          format: int32
+          type: integer
+        updatedBy:
+          format: int32
+          type: integer
+        createdAt:
+          format: int64
+          type: integer
+        updatedAt:
+          format: int64
+          type: integer
+        version:
+          format: int32
+          type: integer
+    WikiPageUpdateRequest:
+      type: object
+      properties:
+        title:
+          maxLength: 200
+          minLength: 1
+          type: string
+        summary:
+          maxLength: 500
+          minLength: 1
+          type: string
+        content:
+          type: string
+        comment:
+          maxLength: 300
+          type: string
+    WikiRevisionDetailResponse:
+      type: object
+      properties:
+        id:
+          format: int32
+          type: integer
+        pageId:
+          format: int32
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        authorId:
+          format: int32
+          type: integer
+        authorName:
+          type: string
+        comment:
+          type: string
+        createdAt:
+          format: int64
+          type: integer
+    WikiRevisionResponse:
+      type: object
+      properties:
+        id:
+          format: int32
+          type: integer
+        pageId:
+          format: int32
+          type: integer
+        title:
+          type: string
+        authorId:
+          format: int32
+          type: integer
+        authorName:
+          type: string
+        comment:
+          type: string
+        createdAt:
+          format: int64
+          type: integer
+    WikiTreeNodeResponse:
+      type: object
+      properties:
+        id:
+          format: int32
+          type: integer
+        parentId:
+          format: int32
+          type: integer
+        title:
+          type: string
+        position:
+          format: int32
+          type: integer
+        summary:
+          type: string
+        summaryInferred:
+          type: boolean
+  securitySchemes:
+    bearerAuth:
+      type: http
+      description: JWT из /api/auth/login или /api/auth/register
+      scheme: bearer
+      bearerFormat: JWT
