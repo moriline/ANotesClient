@@ -655,15 +655,7 @@ const openCount = computed(() => total.value)
         <span class="text-[13px] font-normal text-muted">(Найдено: {{ openCount }})</span>
       </template>
       <template #actions>
-        <template v-if="selectedIds.size === 0">
-          <HelpLink
-            topic="task-list"
-            hash="views"
-            label="Справка: страница «Задачи»"
-            hint="Режимы списка: Список, По эпикам, Доска, По вехам. Плюс фильтры (проект, статус, веха, исполнитель, теги) и поиск по заголовку и описанию."
-          />
-          <UButton icon="i-lucide-plus" color="primary" @click="createTaskModalOpen = true">Задача</UButton>
-        </template>
+        <UButton v-if="selectedIds.size === 0" icon="i-lucide-plus" color="primary" @click="createTaskModalOpen = true">Задача</UButton>
       </template>
 
       <div v-if="selectedIds.size === 0" class="flex flex-wrap items-end gap-2">
@@ -672,20 +664,26 @@ const openCount = computed(() => total.value)
              как только фильтр заполнен, и непонятно, какое поле за что отвечает
              (плавающих/анимированных лейблов в этой версии Nuxt UI нет). -->
         <UFormField label="Проект">
+          <template #label>
+            <span class="inline-flex items-center gap-1">
+              Проект
+              <!-- С этой страницы нельзя было попасть в базу знаний проекта —
+                   только через /projects. Значок при подписи, а не отдельная
+                   кнопка в ряду: не ломает высоту строки и явно привязан к
+                   выбранному здесь проекту. -->
+              <RouterLink
+                v-if="projectId"
+                :to="`/projects/${projectId}/wiki`"
+                class="inline-flex size-4 items-center justify-center rounded-full text-dimmed transition-colors hover:text-primary"
+                title="База знаний проекта"
+                aria-label="База знаний проекта"
+              >
+                <UIcon name="i-lucide-book-open" class="size-3.5" />
+              </RouterLink>
+            </span>
+          </template>
           <USelectMenu v-model="projectId" :items="projectItems" value-key="value" placeholder="Любой" class="w-[180px]" />
         </UFormField>
-        <!-- С этой страницы нельзя было попасть в базу знаний проекта — только
-             через /projects. Та же кнопка, что в строке проекта там. -->
-        <UTooltip :text="projectId ? 'База знаний проекта' : 'Сначала выберите проект'">
-          <UButton
-            :to="projectId ? `/projects/${projectId}/wiki` : undefined"
-            :disabled="!projectId"
-            icon="i-lucide-book-open"
-            variant="outline"
-            color="primary"
-            aria-label="База знаний"
-          />
-        </UTooltip>
         <UFormField label="Статус">
           <USelectMenu
             v-model="statusId"
@@ -731,13 +729,21 @@ const openCount = computed(() => total.value)
         </UFormField>
         <UCheckbox v-model="assignedToMe" label="Назначено мне" class="mb-2" />
         <USwitch v-model="showArchived" label="Архивные" class="mb-2" />
-        <USelectMenu
-          v-model="viewMode"
-          :items="viewItems"
-          value-key="value"
-          class="w-[140px]"
-          @update:model-value="userChangedMode = true"
-        />
+        <div class="mb-2 flex items-center gap-1">
+          <USelectMenu
+            v-model="viewMode"
+            :items="viewItems"
+            value-key="value"
+            class="w-[140px]"
+            @update:model-value="userChangedMode = true"
+          />
+          <HelpLink
+            topic="task-list"
+            hash="views"
+            label="Справка: режимы отображения списка"
+            hint="Режимы списка: Список, По эпикам, Доска, По вехам. Плюс фильтры (проект, статус, веха, исполнитель, теги) и поиск по заголовку и описанию."
+          />
+        </div>
         <UButton v-if="hasActiveFilters" variant="outline" color="primary" icon="i-lucide-x" @click="resetFilters">Сбросить</UButton>
       </div>
 
