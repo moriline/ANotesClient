@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 declare module 'vue-router' {
@@ -8,8 +8,15 @@ declare module 'vue-router' {
   }
 }
 
+// GitHub Pages не умеет history-режим (прямой переход на /tasks/1/42 даст 404)
+// — в демо (client_pages.md §2.4) роутер работает по хэшу, адреса вида
+// /ANotesClient/#/tasks/1/42. В боевом режиме — обычный history.
+const history = import.meta.env.VITE_DEMO === 'true'
+  ? createWebHashHistory(import.meta.env.BASE_URL)
+  : createWebHistory(import.meta.env.BASE_URL)
+
 export const router = createRouter({
-  history: createWebHistory(),
+  history,
   scrollBehavior(to, from, savedPosition) {
     // Якорь (#id) — плавно к элементу с отступом под липкую шапку.
     if (to.hash) return { el: to.hash, top: 80, behavior: 'smooth' }

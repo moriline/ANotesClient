@@ -17,6 +17,17 @@ interface HttpOptions extends RequestInit {
 }
 
 async function request<T>(path: string, init: HttpOptions = {}): Promise<T> {
+  // Единственная точка подмены на демо-транспорт (client_pages.md §3.1) — весь
+  // остальной код приложения (src/api/*.ts, сторы, компоненты) о демо не знает.
+  // Динамический import — в боевой сборке VITE_DEMO инлайнится в false, ветка
+  // и весь модуль demo/* (сид, обработчики) отбрасываются как недостижимые и
+  // не попадают в bundle вообще (проверено: без этого демо весило +19 КБ в
+  // проде, даже не исполняясь).
+  if (import.meta.env.VITE_DEMO === 'true') {
+    const { demoHttp } = await import('./demo/demoHttp')
+    return demoHttp<T>(path, init)
+  }
+
   const { auth = true, headers, ...rest } = init
   const authStore = useAuthStore()
 

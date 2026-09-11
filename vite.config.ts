@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import ui from '@nuxt/ui/vite'
 import { Agent } from 'node:http'
@@ -12,7 +12,13 @@ import { THEME } from './src/theme.ts'
 // На loopback новое соединение стоит ~0.6 мс, пул тут не нужен.
 const apiAgent = new Agent({ keepAlive: false, maxSockets: 24 })
 
-export default defineConfig({
+// mode 'demo' (npm run dev:demo / build:demo) читает .env.demo — VITE_BASE
+// там задаёт путь GitHub Pages (client_pages.md §2.1); server.proxy в этом
+// режиме просто не используется (демо-транспорт подменяет http.ts целиком).
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  return {
+  base: env.VITE_BASE || '/',
   plugins: [
     vue(),
     ui({
@@ -58,5 +64,6 @@ export default defineConfig({
         }
       }
     }
+  }
   }
 })
