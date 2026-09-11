@@ -636,45 +636,59 @@ const openCount = computed(() => total.value)
 <template>
   <div>
     <PageHeader title="Задачи" :subtitle="`Найдено: ${openCount}`">
-      <div v-if="selectedIds.size === 0" class="flex flex-wrap items-center gap-2">
+      <div v-if="selectedIds.size === 0" class="flex flex-wrap items-end gap-2">
         <UInput v-model="search" icon="i-lucide-search" placeholder="Поиск строки или #номер" class="w-[240px]" />
-        <USelectMenu v-model="projectId" :items="projectItems" value-key="value" placeholder="Проект" class="w-[180px]" />
-        <USelectMenu
-          v-model="statusId"
-          :items="statusItems"
-          value-key="value"
-          :disabled="!projectId || viewMode === 'board'"
-          placeholder="Статус"
-          class="w-[160px]"
-        />
-        <USelectMenu
-          v-model="milestoneFilter"
-          :items="milestoneFilterItems"
-          value-key="value"
-          :disabled="!projectId"
-          placeholder="Веха"
-          class="w-[160px]"
-        />
-        <USelectMenu v-model="assignedUserId" :items="userItems" value-key="value" :disabled="assignedToMe" placeholder="Исполнитель" class="w-[180px]" />
-        <USelectMenu
-          v-model="taskType"
-          :items="typeItems"
-          value-key="value"
-          :disabled="viewMode !== 'list'"
-          placeholder="Вид"
-          class="w-[150px]"
-        />
-        <USelectMenu
-          v-if="allTags.length"
-          v-model="selectedTags"
-          :items="allTags"
-          multiple
-          icon="i-lucide-tag"
-          placeholder="Теги"
-          class="w-[180px]"
-        />
-        <UCheckbox v-model="assignedToMe" label="Назначено мне" />
-        <USwitch v-model="showArchived" label="Архивные" />
+        <!-- Подпись — постоянная (UFormField), а не placeholder: тот пропадает,
+             как только фильтр заполнен, и непонятно, какое поле за что отвечает
+             (плавающих/анимированных лейблов в этой версии Nuxt UI нет). -->
+        <UFormField label="Проект">
+          <USelectMenu v-model="projectId" :items="projectItems" value-key="value" placeholder="Любой" class="w-[180px]" />
+        </UFormField>
+        <UFormField label="Статус">
+          <USelectMenu
+            v-model="statusId"
+            :items="statusItems"
+            value-key="value"
+            :disabled="!projectId || viewMode === 'board'"
+            placeholder="Любой"
+            class="w-[160px]"
+          />
+        </UFormField>
+        <UFormField label="Веха">
+          <USelectMenu
+            v-model="milestoneFilter"
+            :items="milestoneFilterItems"
+            value-key="value"
+            :disabled="!projectId"
+            placeholder="Любая"
+            class="w-[160px]"
+          />
+        </UFormField>
+        <UFormField label="Исполнитель">
+          <USelectMenu v-model="assignedUserId" :items="userItems" value-key="value" :disabled="assignedToMe" placeholder="Любой" class="w-[180px]" />
+        </UFormField>
+        <UFormField label="Вид">
+          <USelectMenu
+            v-model="taskType"
+            :items="typeItems"
+            value-key="value"
+            :disabled="viewMode !== 'list'"
+            placeholder="Любой"
+            class="w-[150px]"
+          />
+        </UFormField>
+        <UFormField v-if="allTags.length" label="Теги">
+          <USelectMenu
+            v-model="selectedTags"
+            :items="allTags"
+            multiple
+            icon="i-lucide-tag"
+            placeholder="Любые"
+            class="w-[180px]"
+          />
+        </UFormField>
+        <UCheckbox v-model="assignedToMe" label="Назначено мне" class="mb-2" />
+        <USwitch v-model="showArchived" label="Архивные" class="mb-2" />
         <USelectMenu
           v-model="viewMode"
           :items="viewItems"
