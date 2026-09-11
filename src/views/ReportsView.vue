@@ -14,6 +14,7 @@ import { getTaskTotalSeconds, listTimeEntries } from '@/api/timeEntries'
 import { listProjectTasks } from '@/api/tasks'
 import { ApiError } from '@/api/http'
 import { formatDate, formatDuration } from '@/utils/format'
+import { downloadCsv, hoursForCsv, toCsvRow } from '@/utils/csv'
 import type { ProjectTimeReportResponse, TaskResponse, TimeEntry, TimeReportResponse } from '@/types/domain'
 
 type Tab = 'user' | 'project' | 'task'
@@ -267,6 +268,34 @@ function goToProjectTasks(id: number) {
   router.push({ path: '/tasks', query: { project: id } })
 }
 
+// CSV — единственный формат экспорта без новой зависимости (XLSX/PDF её
+// требуют); только «По пользователю»/«По проекту», как и просили. «По задаче»
+// не трогаем — там и так виден полный список списаний на странице.
+const canExport = computed(() =>
+  (tab.value === 'user' && !!userReport.value) || (tab.value === 'project' && !!projectReport.value)
+)
+
+function exportCsv() {
+  const rows: string[] = []
+  if (tab.value === 'user' && userReport.value) {
+    const who = userName(userReport.value.userId)
+    rows.push(toCsvRow([`Отчёт по пользователю: ${who}`, periodLabel.value]))
+    rows.push('')
+    rows.push(toCsvRow(['Проект', 'Время', 'Часы', 'Записей']))
+    for (const r of userRows.value) rows.push(toCsvRow([r.label, formatDuration(r.totalSeconds), hoursForCsv(r.totalSeconds), r.entryCount]))
+    rows.push(toCsvRow(['Итого', formatDuration(userReport.value.totalSeconds), hoursForCsv(userReport.value.totalSeconds), userReport.value.entryCount]))
+    downloadCsv(`отчёт-по-пользователю-${who}-${periodLabel.value}.csv`, rows)
+  } else if (tab.value === 'project' && projectReport.value) {
+    const projName = projectReport.value.projectName || `Проект #${projectReport.value.projectId}`
+    rows.push(toCsvRow([`Отчёт по проекту: ${projName}`, periodLabel.value]))
+    rows.push('')
+    rows.push(toCsvRow(['Пользователь', 'Время', 'Часы', 'Записей']))
+    for (const r of projectRows.value) rows.push(toCsvRow([r.label, formatDuration(r.totalSeconds), hoursForCsv(r.totalSeconds), r.entryCount]))
+    rows.push(toCsvRow(['Итого', formatDuration(projectReport.value.totalSeconds), hoursForCsv(projectReport.value.totalSeconds), projectReport.value.entryCount]))
+    downloadCsv(`отчёт-по-проекту-${projName}-${periodLabel.value}.csv`, rows)
+  }
+}
+
 onMounted(async () => {
   await Promise.all([
     dictionaries.loadProjects().catch(() => {}),
@@ -282,6 +311,9 @@ onMounted(async () => {
   <div>
     <PageHeader title="Отчёты по времени" subtitle="Списанное время по пользователям, проектам и задачам">
       <template #actions>
+        <UButton v-if="canExport" icon="i-lucide-download" variant="outline" color="primary" @click="exportCsv">
+          Экспорт CSV
+        </UButton>
         <HelpLink topic="reports" label="Справка: отчёты по времени" />
       </template>
       <div class="inline-flex rounded-lg border border-default p-0.5">
