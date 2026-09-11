@@ -642,7 +642,11 @@ const openCount = computed(() => total.value)
 
 <template>
   <div>
-    <PageHeader :title="`Задачи (${openCount})`">
+    <PageHeader title="Задачи">
+      <template #title>
+        Задачи
+        <span class="text-[13px] font-normal text-muted">(Найдено: {{ openCount }})</span>
+      </template>
       <template #actions>
         <template v-if="selectedIds.size === 0">
           <HelpLink
