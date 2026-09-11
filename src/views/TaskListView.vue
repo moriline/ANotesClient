@@ -658,78 +658,87 @@ const openCount = computed(() => total.value)
         <UButton v-if="selectedIds.size === 0" icon="i-lucide-plus" color="primary" @click="createTaskModalOpen = true">Задача</UButton>
       </template>
 
-      <div v-if="selectedIds.size === 0" class="flex flex-wrap items-end gap-2">
-        <UInput v-model="search" icon="i-lucide-search" placeholder="Поиск строки или #номер" class="w-[240px]" />
-        <!-- Подпись — постоянная (UFormField), а не placeholder: тот пропадает,
-             как только фильтр заполнен, и непонятно, какое поле за что отвечает
-             (плавающих/анимированных лейблов в этой версии Nuxt UI нет). -->
-        <UFormField label="Проект">
-          <template #label>
-            <span class="inline-flex items-center gap-1">
-              Проект
-              <!-- С этой страницы нельзя было попасть в базу знаний проекта —
-                   только через /projects. Значок при подписи, а не отдельная
-                   кнопка в ряду: не ломает высоту строки и явно привязан к
-                   выбранному здесь проекту. -->
-              <RouterLink
-                v-if="projectId"
-                :to="`/projects/${projectId}/wiki`"
-                class="inline-flex size-4 items-center justify-center rounded-full text-dimmed transition-colors hover:text-primary"
-                title="База знаний проекта"
-                aria-label="База знаний проекта"
-              >
-                <UIcon name="i-lucide-book-open" class="size-3.5" />
-              </RouterLink>
-            </span>
-          </template>
-          <USelectMenu v-model="projectId" :items="projectItems" value-key="value" placeholder="Любой" class="w-[180px]" />
-        </UFormField>
-        <UFormField label="Статус">
-          <USelectMenu
-            v-model="statusId"
-            :items="statusItems"
-            value-key="value"
-            :disabled="!projectId || viewMode === 'board'"
-            placeholder="Любой"
-            class="w-[160px]"
-          />
-        </UFormField>
-        <UFormField label="Веха">
-          <USelectMenu
-            v-model="milestoneFilter"
-            :items="milestoneFilterItems"
-            value-key="value"
-            :disabled="!projectId"
-            placeholder="Любая"
-            class="w-[160px]"
-          />
-        </UFormField>
-        <UFormField label="Исполнитель">
-          <USelectMenu v-model="assignedUserId" :items="userItems" value-key="value" :disabled="assignedToMe" placeholder="Любой" class="w-[180px]" />
-        </UFormField>
-        <UFormField label="Вид">
-          <USelectMenu
-            v-model="taskType"
-            :items="typeItems"
-            value-key="value"
-            :disabled="viewMode !== 'list'"
-            placeholder="Любой"
-            class="w-[150px]"
-          />
-        </UFormField>
-        <UFormField v-if="allTags.length" label="Теги">
-          <USelectMenu
-            v-model="selectedTags"
-            :items="allTags"
-            multiple
-            icon="i-lucide-tag"
-            placeholder="Любые"
-            class="w-[180px]"
-          />
-        </UFormField>
-        <UCheckbox v-model="assignedToMe" label="Назначено мне" class="mb-2" />
-        <USwitch v-model="showArchived" label="Архивные" class="mb-2" />
-        <div class="mb-2 flex items-center gap-1">
+      <div v-if="selectedIds.size === 0" class="flex flex-col gap-2">
+        <div class="flex flex-wrap items-end gap-2">
+          <UInput v-model="search" icon="i-lucide-search" placeholder="Поиск строки или #номер" class="w-[240px]" />
+          <!-- Подпись — постоянная (UFormField), а не placeholder: тот пропадает,
+               как только фильтр заполнен, и непонятно, какое поле за что отвечает
+               (плавающих/анимированных лейблов в этой версии Nuxt UI нет). -->
+          <UFormField label="Проект">
+            <template #label>
+              <span class="inline-flex items-center gap-1">
+                Проект
+                <!-- С этой страницы нельзя было попасть в базу знаний проекта —
+                     только через /projects. Значок при подписи, а не отдельная
+                     кнопка в ряду: не ломает высоту строки и явно привязан к
+                     выбранному здесь проекту. -->
+                <RouterLink
+                  v-if="projectId"
+                  :to="`/projects/${projectId}/wiki`"
+                  class="inline-flex size-4 items-center justify-center rounded-full text-dimmed transition-colors hover:text-primary"
+                  title="База знаний проекта"
+                  aria-label="База знаний проекта"
+                >
+                  <UIcon name="i-lucide-book-open" class="size-3.5" />
+                </RouterLink>
+              </span>
+            </template>
+            <USelectMenu v-model="projectId" :items="projectItems" value-key="value" placeholder="Любой" class="w-[180px]" />
+          </UFormField>
+          <UFormField label="Статус">
+            <USelectMenu
+              v-model="statusId"
+              :items="statusItems"
+              value-key="value"
+              :disabled="!projectId || viewMode === 'board'"
+              placeholder="Любой"
+              class="w-[160px]"
+            />
+          </UFormField>
+          <UFormField label="Веха">
+            <USelectMenu
+              v-model="milestoneFilter"
+              :items="milestoneFilterItems"
+              value-key="value"
+              :disabled="!projectId"
+              placeholder="Любая"
+              class="w-[160px]"
+            />
+          </UFormField>
+          <UFormField label="Исполнитель">
+            <USelectMenu v-model="assignedUserId" :items="userItems" value-key="value" :disabled="assignedToMe" placeholder="Любой" class="w-[180px]" />
+          </UFormField>
+          <UFormField label="Вид">
+            <USelectMenu
+              v-model="taskType"
+              :items="typeItems"
+              value-key="value"
+              :disabled="viewMode !== 'list'"
+              placeholder="Любой"
+              class="w-[150px]"
+            />
+          </UFormField>
+          <UFormField v-if="allTags.length" label="Теги">
+            <USelectMenu
+              v-model="selectedTags"
+              :items="allTags"
+              multiple
+              icon="i-lucide-tag"
+              placeholder="Любые"
+              class="w-[180px]"
+            />
+          </UFormField>
+          <UCheckbox v-model="assignedToMe" label="Назначено мне" class="mb-2" />
+          <USwitch v-model="showArchived" label="Архивные" class="mb-2" />
+          <UButton v-if="hasActiveFilters" variant="outline" color="primary" icon="i-lucide-x" @click="resetFilters">Сбросить</UButton>
+        </div>
+
+        <!-- Отдельная строка, не делит перенос с фильтрами выше: набор фильтров
+             меняется (Сбросить то есть, то нет, Теги то есть, то нет), и если
+             этот блок был просто ещё одним элементом того же flex-wrap, он
+             прыгал по строке в зависимости от того, что перед ним успело
+             перенестись. Здесь его позиция не зависит от фильтров вообще. -->
+        <div class="flex items-center gap-1">
           <USelectMenu
             v-model="viewMode"
             :items="viewItems"
@@ -744,7 +753,6 @@ const openCount = computed(() => total.value)
             hint="Режимы списка: Список, По эпикам, Доска, По вехам. Плюс фильтры (проект, статус, веха, исполнитель, теги) и поиск по заголовку и описанию."
           />
         </div>
-        <UButton v-if="hasActiveFilters" variant="outline" color="primary" icon="i-lucide-x" @click="resetFilters">Сбросить</UButton>
       </div>
 
       <div v-else class="flex flex-wrap items-center gap-2">
