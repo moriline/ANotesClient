@@ -4,8 +4,10 @@ import { helpHint, helpTitle } from '@/help/topics'
 
 // Значок «?» рядом с элементом интерфейса. По наведению (как ⓘ у «Описания»
 // задачи) открывает поповер с короткой подсказкой и ссылкой в нужный раздел
-// справки — сам по себе никуда не переходит. Ссылка внутри — RouterLink, поэтому
-// ⌘/Ctrl-клик по ней открывает справку в новой вкладке.
+// справки — сам по себе никуда не переходит. Ссылка внутри — RouterLink с
+// target="_blank": справка всегда открывается в новой вкладке, не теряя текущий
+// экран. При заданном target vue-router не перехватывает клик — обычная
+// браузерная навигация в новой вкладке, как у любой ссылки.
 const props = defineProps<{
   topic: string
   hash?: string
@@ -45,6 +47,8 @@ const body = computed(() => props.hint ?? helpHint(props.topic))
         <p class="text-muted">{{ body }}</p>
         <RouterLink
           :to="to"
+          target="_blank"
+          rel="noopener"
           class="inline-flex items-center gap-1 font-medium text-primary hover:underline"
         >
           Открыть раздел «{{ helpTitle(topic) }}»
