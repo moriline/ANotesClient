@@ -501,6 +501,17 @@ onMounted(() => {
 onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
 function resetFilters() {
+  // В группировке/доске «Сбросить» должен убирать сужение, не выкидывая из
+  // текущего проекта — НО только если есть что убирать помимо самого проекта.
+  // Иначе (project/view — единственное выставленное, напр. прямая ссылка
+  // ?project=5&view=epics) сбрасывать нечего, и кнопка молча ничего не делает —
+  // тот самый баг. Поэтому: если, кроме project, что-то ещё активно — щадящий
+  // сброс (остаёмся в проекте/группировке); если project/view — единственное
+  // активное — сбрасываем и их тоже.
+  const otherFiltersActive = !!search.value || !!statusId.value || !!assignedUserId.value ||
+    assignedToMe.value || showArchived.value || selectedTags.value.length > 0 ||
+    !!taskType.value || milestoneFilter.value !== undefined
+
   search.value = ''
   statusId.value = undefined
   assignedUserId.value = undefined
@@ -510,16 +521,12 @@ function resetFilters() {
   taskType.value = undefined
   milestoneFilter.value = undefined
   page.value = 1
-  // Раньше в режимах группировки/доски проект и вид сознательно не трогались
-  // («сброс фильтров — это не выход из проекта»). Баг: hasActiveFilters всё
-  // равно считает выбранный projectId активным фильтром и показывает кнопку,
-  // а она в этом случае ничего не делает — если project был единственным
-  // выставленным значением (например, прямая ссылка ?project=5&view=epics),
-  // клик по «Сбросить» выглядел так, будто ничего не происходит. Сбрасываем
-  // безусловно — «Сбросить» значит «сбросить всё», без исключений.
-  projectId.value = undefined
-  viewMode.value = 'list'
-  userChangedMode.value = false
+
+  if (viewMode.value === 'list' || !otherFiltersActive) {
+    projectId.value = undefined
+    viewMode.value = 'list'
+    userChangedMode.value = false
+  }
 }
 
 // Строка не кликабельна целиком (консистентно с /projects) — переход по задаче
