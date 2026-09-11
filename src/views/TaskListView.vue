@@ -674,6 +674,18 @@ const openCount = computed(() => total.value)
         <UFormField label="Проект">
           <USelectMenu v-model="projectId" :items="projectItems" value-key="value" placeholder="Любой" class="w-[180px]" />
         </UFormField>
+        <!-- С этой страницы нельзя было попасть в базу знаний проекта — только
+             через /projects. Та же кнопка, что в строке проекта там. -->
+        <UTooltip :text="projectId ? 'База знаний проекта' : 'Сначала выберите проект'">
+          <UButton
+            :to="projectId ? `/projects/${projectId}/wiki` : undefined"
+            :disabled="!projectId"
+            icon="i-lucide-book-open"
+            variant="outline"
+            color="primary"
+            aria-label="База знаний"
+          />
+        </UTooltip>
         <UFormField label="Статус">
           <USelectMenu
             v-model="statusId"
