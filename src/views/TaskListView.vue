@@ -635,7 +635,19 @@ const openCount = computed(() => total.value)
 
 <template>
   <div>
-    <PageHeader title="Задачи" :subtitle="`Найдено: ${openCount}`">
+    <PageHeader :title="`Задачи (${openCount})`">
+      <template #actions>
+        <template v-if="selectedIds.size === 0">
+          <HelpLink
+            topic="task-list"
+            hash="views"
+            label="Справка: страница «Задачи»"
+            hint="Режимы списка: Список, По эпикам, Доска, По вехам. Плюс фильтры (проект, статус, веха, исполнитель, теги) и поиск по заголовку и описанию."
+          />
+          <UButton icon="i-lucide-plus" color="primary" @click="createTaskModalOpen = true">Задача</UButton>
+        </template>
+      </template>
+
       <div v-if="selectedIds.size === 0" class="flex flex-wrap items-end gap-2">
         <UInput v-model="search" icon="i-lucide-search" placeholder="Поиск строки или #номер" class="w-[240px]" />
         <!-- Подпись — постоянная (UFormField), а не placeholder: тот пропадает,
@@ -696,13 +708,6 @@ const openCount = computed(() => total.value)
           class="w-[140px]"
           @update:model-value="userChangedMode = true"
         />
-        <HelpLink
-          topic="task-list"
-          hash="views"
-          label="Справка: страница «Задачи»"
-          hint="Режимы списка: Список, По эпикам, Доска, По вехам. Плюс фильтры (проект, статус, веха, исполнитель, теги) и поиск по заголовку и описанию."
-        />
-        <UButton icon="i-lucide-plus" color="primary" @click="createTaskModalOpen = true">Задача</UButton>
         <UButton v-if="hasActiveFilters" variant="outline" color="primary" icon="i-lucide-x" @click="resetFilters">Сбросить</UButton>
       </div>
 
