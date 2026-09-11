@@ -10,6 +10,89 @@ Client for ANotes (Task Manager &amp; Knowledge Base)
 
 > **Статус:** работает локально, в продакшене не разворачивался. Подробности — в разделе [Состояние проекта](#состояние-проекта).
 
+## Скриншоты
+
+### Задачи
+
+<details>
+  <summary>Список задач</summary>
+  <img src="docs/tasks1.png" width="600">
+</details>
+
+<details>
+  <summary>Список задач — группировка по эпикам</summary>
+  <img src="docs/tasks2.png" width="600">
+</details>
+
+<details>
+  <summary>Список задач — группировка по вехам</summary>
+  <img src="docs/tasks3.png" width="600">
+</details>
+
+<details>
+  <summary>Список задач — доска по статусам</summary>
+  <img src="docs/tasks4.png" width="600">
+</details>
+
+<details>
+  <summary>Список задач — фильтры</summary>
+  <img src="docs/tasks5.png" width="600">
+</details>
+
+<details>
+  <summary>Страница задачи</summary>
+  <img src="docs/task_edit1.png" width="600">
+</details>
+
+<details>
+  <summary>Назначить задачу на себя</summary>
+  <img src="docs/task_assign_to_me1.png" width="600">
+</details>
+
+### Проекты и планирование
+
+<details>
+  <summary>Проекты</summary>
+  <img src="docs/projects1.png" width="600">
+</details>
+
+<details>
+  <summary>Дорожная карта эпиков</summary>
+  <img src="docs/roadmap1.png" width="600">
+</details>
+
+<details>
+  <summary>Дорожная карта — масштаб и вехи</summary>
+  <img src="docs/roadmap2.png" width="600">
+</details>
+
+<details>
+  <summary>Вехи</summary>
+  <img src="docs/milestones1.png" width="600">
+</details>
+
+### Прочее
+
+<details>
+  <summary>Отчёты по времени</summary>
+  <img src="docs/reports1.png" width="600">
+</details>
+
+<details>
+  <summary>База знаний</summary>
+  <img src="docs/wiki1.png" width="600">
+</details>
+
+<details>
+  <summary>Пользователи</summary>
+  <img src="docs/users1.png" width="600">
+</details>
+
+<details>
+  <summary>Справка</summary>
+  <img src="docs/help1.png" width="600">
+</details>
+
 ---
 
 ## Чем отличается
@@ -112,20 +195,6 @@ npm run dev
 |---|---|
 | ![](docs/board.png) | ![](docs/roadmap.png) |
 -->
-
-| Доска по статусам | Дорожная карта |
-|---|---|
-| ![](docs/tasks1.png) | ![](docs/tasks2.png) |
-| ![](docs/tasks3.png) | ![](docs/tasks4.png) |
-| ![](docs/tasks5.png) | ![](docs/roadmap1.png) |
-| ![](docs/task_assign_to_me1.png) | ![](docs/roadmap2.png) |
-| ![](docs/help1.png) | ![](docs/milestones1.png) |
-| ![](docs/projects1.png) | ![](docs/reports1.png) |
-| ![](docs/task_edit1.png) | ![](docs/users1.png) |
-| ![](docs/wiki1.png) | ![](docs/users1.png) |
-
-
-
 
 ---
 
