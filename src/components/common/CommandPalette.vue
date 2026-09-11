@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { commandPaletteOpen, createTaskModalOpen } from '@/composables/useGlobalUi'
 import { findTasks } from '@/api/tasks'
@@ -11,6 +11,7 @@ const searchTerm = ref('')
 const taskResults = ref<TaskResponse[]>([])
 const wikiResults = ref<WikiPageResponse[]>([])
 const loading = ref(false)
+const contentEl = ref<HTMLElement | null>(null)
 
 watch(searchTerm, async (term) => {
   const query = term.trim()
@@ -99,17 +100,47 @@ const actionsGroup = {
 }
 
 const groups = computed(() => [taskGroup.value, wikiGroup.value, navGroup, actionsGroup])
+
+// Подстраховка: наблюдалась «зависшая» палитра — не закрывается ни по Esc, ни
+// кликом по фону, блокирует интерфейс, лечится только жёсткой перезагрузкой
+// страницы. У встроенного закрытия Nuxt UI/Reka (DialogContent) нет
+// независимого запасного пути: Esc при dismissible=true целиком полагается на
+// внутреннюю логику Reka, а клик вне контента идёт через Reka-утилиту
+// pointerDownOutside, которая сама вызывает preventDefault (= не закрывать),
+// если кликнутый элемент к моменту обработки уже не в DOM (!target.isConnected)
+// — гоночное состояние с перерисовкой в момент клика. Слушаем на capture-фазе
+// document — отрабатывает раньше внутренних обработчиков независимо от того,
+// что там пошло не так, и не мешает штатному закрытию (оно просто выставит
+// тот же commandPaletteOpen = false ещё раз).
+function onKeydownCapture(e: KeyboardEvent) {
+  if (e.key === 'Escape' && commandPaletteOpen.value) commandPaletteOpen.value = false
+}
+function onPointerDownCapture(e: PointerEvent) {
+  if (!commandPaletteOpen.value) return
+  const target = e.target as Node | null
+  if (contentEl.value && target && !contentEl.value.contains(target)) commandPaletteOpen.value = false
+}
+onMounted(() => {
+  document.addEventListener('keydown', onKeydownCapture, true)
+  document.addEventListener('pointerdown', onPointerDownCapture, true)
+})
+onUnmounted(() => {
+  document.removeEventListener('keydown', onKeydownCapture, true)
+  document.removeEventListener('pointerdown', onPointerDownCapture, true)
+})
 </script>
 
 <template>
   <UModal v-model:open="commandPaletteOpen" :ui="{ content: 'max-w-xl' }">
     <template #content>
-      <UCommandPalette
-        v-model:search-term="searchTerm"
-        :groups="groups"
-        :loading="loading"
-        placeholder="Поиск задач и переход по разделам…"
-      />
+      <div ref="contentEl">
+        <UCommandPalette
+          v-model:search-term="searchTerm"
+          :groups="groups"
+          :loading="loading"
+          placeholder="Поиск задач и переход по разделам…"
+        />
+      </div>
     </template>
   </UModal>
 </template>
