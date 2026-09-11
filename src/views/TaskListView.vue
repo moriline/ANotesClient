@@ -65,8 +65,11 @@ const viewMode = ref<'list' | 'epics' | 'milestones' | 'board'>(
 // это тоже явный выбор (кто-то поделился ссылкой именно на такой режим).
 const userChangedMode = ref(!!route.query.view)
 
+// «Тип», не «Вид» — «вид» занят переключателем режима отображения страницы
+// (Список/По эпикам/По вехам/Доска), это разные оси и раньше назывались
+// одинаково, что читалось как дубль одного и того же контрола.
 const typeItems = [
-  { label: 'Все виды', value: undefined },
+  { label: 'Все типы', value: undefined },
   { label: 'Только задачи', value: 'TASK' as const },
   { label: 'Только эпики', value: 'EPIC' as const }
 ]
@@ -733,7 +736,7 @@ function selectViewMode(v: typeof viewMode.value) {
           value-key="value"
           :disabled="viewMode !== 'list'"
           icon="i-lucide-shapes"
-          placeholder="Вид"
+          placeholder="Тип"
           class="w-[140px]"
         />
         <USelectMenu
