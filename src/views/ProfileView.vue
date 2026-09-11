@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { z } from 'zod'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import NotificationSettingsCard from '@/components/profile/NotificationSettingsCard.vue'
+import PasswordInput from '@/components/common/PasswordInput.vue'
 import { useAuthStore } from '@/stores/auth'
 import { changePassword, updateMe } from '@/api/users'
 import { ApiError } from '@/api/http'
@@ -149,13 +150,13 @@ watch(() => auth.profile, syncProfileForm)
 
         <UForm :schema="passwordSchema" :state="passwordForm" class="flex flex-col gap-4" @submit="savePassword">
           <UFormField label="Текущий пароль" name="currentPassword" required>
-            <UInput v-model="passwordForm.currentPassword" type="password" class="w-full" />
+            <PasswordInput v-model="passwordForm.currentPassword" autocomplete="current-password" />
           </UFormField>
           <UFormField label="Новый пароль" name="newPassword" required>
-            <UInput v-model="passwordForm.newPassword" type="password" class="w-full" />
+            <PasswordInput v-model="passwordForm.newPassword" autocomplete="new-password" />
           </UFormField>
           <UFormField label="Повторите новый пароль" name="repeatPassword" required>
-            <UInput v-model="passwordForm.repeatPassword" type="password" class="w-full" />
+            <PasswordInput v-model="passwordForm.repeatPassword" autocomplete="new-password" />
           </UFormField>
           <div class="flex justify-end">
             <UButton type="submit" color="primary" :loading="savingPassword">Изменить пароль</UButton>
