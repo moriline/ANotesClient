@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ApiError } from '@/api/http'
+import PasswordInput from '@/components/common/PasswordInput.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -50,7 +51,7 @@ async function onSubmit() {
           <UInput v-model="state.email" type="email" class="w-full" />
         </UFormField>
         <UFormField label="Пароль" name="password">
-          <UInput v-model="state.password" type="password" class="w-full" />
+          <PasswordInput v-model="state.password" autocomplete="new-password" />
         </UFormField>
 
         <p v-if="error" class="text-sm text-error">{{ error }}</p>
