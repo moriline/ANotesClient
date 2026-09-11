@@ -16,7 +16,7 @@ import TaskFormModal from '@/components/task/TaskFormModal.vue'
 import RelativeTime from '@/components/common/RelativeTime.vue'
 import { useDictionariesStore } from '@/stores/dictionaries'
 import { useAuthStore } from '@/stores/auth'
-import { findTasks, deleteTask, updateTask, createTask } from '@/api/tasks'
+import { findTasks, getTask, deleteTask, updateTask, createTask } from '@/api/tasks'
 import { isEpic } from '@/utils/taskType'
 import { useConfirm } from '@/composables/useConfirm'
 import { useEpicGrouping, type EpicGroup } from '@/composables/useEpicGrouping'
@@ -215,10 +215,19 @@ function baseFilter(opts?: { ignoreStatus?: boolean }) {
   }
 }
 
+// «#104» или просто «104» — номер задачи. contentSearch номер не найдёт (это
+// подстрока по названию/описанию), а у /api/find нет фильтра по id вовсе —
+// задачи адресуются глобальным id, отдельной ручки «по id» тоже нет (та же
+// причина, по которой WikiMarkdown резолвит #id через /api/find с limit).
+const TASK_NUMBER = /^#?(\d+)$/
+
 async function fetchTasks() {
   if (viewMode.value === 'epics') return fetchGrouped()
   if (viewMode.value === 'milestones') return fetchMilestoneGrouped()
   if (viewMode.value === 'board') return fetchBoard()
+
+  const numberMatch = TASK_NUMBER.exec(search.value.trim())
+  if (numberMatch) return fetchByTaskNumber(Number(numberMatch[1]))
 
   loading.value = true
   try {
@@ -234,6 +243,35 @@ async function fetchTasks() {
     ensureStatusesForTasks()
   } catch (e) {
     toast.add({ title: 'Не удалось загрузить задачи', description: e instanceof ApiError ? e.message : undefined, color: 'error' })
+  } finally {
+    loading.value = false
+  }
+}
+
+// Выбран проект — задачу можно получить напрямую (GET .../tasks/{id}), без
+// оглядки на прочие фильтры: «найди мне #104» это прямой переход, а не сужение
+// списка. Без проекта id глобальный, а ручки «по id» нет — просматриваем, как
+// WikiMarkdown резолвит #id, лимитом в 500 (тот же компромисс, тот же повод).
+async function fetchByTaskNumber(id: number) {
+  loading.value = true
+  try {
+    let found: TaskResponse | null = null
+    if (projectId.value) {
+      try {
+        found = await getTask(projectId.value, id)
+      } catch (e) {
+        if (!(e instanceof ApiError && e.status === 404)) throw e
+      }
+    } else {
+      const res = await findTasks({ limit: 500 })
+      found = res.tasks.find(t => t.id === id) ?? null
+    }
+    tasks.value = found ? [found] : []
+    total.value = tasks.value.length
+    selectedIds.value = new Set()
+    ensureStatusesForTasks()
+  } catch (e) {
+    toast.add({ title: 'Не удалось найти задачу', description: e instanceof ApiError ? e.message : undefined, color: 'error' })
   } finally {
     loading.value = false
   }
@@ -599,7 +637,7 @@ const openCount = computed(() => total.value)
   <div>
     <PageHeader title="Задачи" :subtitle="`Найдено: ${openCount}`">
       <div v-if="selectedIds.size === 0" class="flex flex-wrap items-center gap-2">
-        <UInput v-model="search" icon="i-lucide-search" placeholder="Поиск строки в задачах" class="w-[240px]" />
+        <UInput v-model="search" icon="i-lucide-search" placeholder="Поиск строки или #номер" class="w-[240px]" />
         <USelectMenu v-model="projectId" :items="projectItems" value-key="value" placeholder="Проект" class="w-[180px]" />
         <USelectMenu
           v-model="statusId"
