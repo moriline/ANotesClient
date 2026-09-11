@@ -877,7 +877,7 @@ function humanizeAction(type: string): string {
 
           <div class="mt-8 border-t border-default pt-6">
             <p class="mb-3 inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted">
-              Резюме (AI)
+              Резюме<template v-if="auth.agentToken"> (AI)</template>
               <HelpLink
                 topic="summary"
                 label="Справка: резюме задачи"
