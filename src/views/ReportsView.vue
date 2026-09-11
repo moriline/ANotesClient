@@ -14,7 +14,7 @@ import { getTaskTotalSeconds, listTimeEntries } from '@/api/timeEntries'
 import { listProjectTasks } from '@/api/tasks'
 import { ApiError } from '@/api/http'
 import { formatDate, formatDuration } from '@/utils/format'
-import { downloadCsv, hoursForCsv, toCsvRow } from '@/utils/csv'
+import { downloadCsv, toCsvRow } from '@/utils/csv'
 import type { ProjectTimeReportResponse, TaskResponse, TimeEntry, TimeReportResponse } from '@/types/domain'
 
 type Tab = 'user' | 'project' | 'task'
@@ -277,21 +277,24 @@ const canExport = computed(() =>
 
 function exportCsv() {
   const rows: string[] = []
+  // Секунды — целым числом, не часами с запятой: дробный разделитель верен
+  // только в одной локали, а целое не ломается ни в какой (см. help/reports.md
+  // #export). "Время" — для чтения глазами, "Секунды" — для =СУММ.
   if (tab.value === 'user' && userReport.value) {
     const who = userName(userReport.value.userId)
     rows.push(toCsvRow([`Отчёт по пользователю: ${who}`, periodLabel.value]))
     rows.push('')
-    rows.push(toCsvRow(['Проект', 'Время', 'Часы', 'Записей']))
-    for (const r of userRows.value) rows.push(toCsvRow([r.label, formatDuration(r.totalSeconds), hoursForCsv(r.totalSeconds), r.entryCount]))
-    rows.push(toCsvRow(['Итого', formatDuration(userReport.value.totalSeconds), hoursForCsv(userReport.value.totalSeconds), userReport.value.entryCount]))
+    rows.push(toCsvRow(['Проект', 'Время', 'Секунды', 'Записей']))
+    for (const r of userRows.value) rows.push(toCsvRow([r.label, formatDuration(r.totalSeconds), r.totalSeconds, r.entryCount]))
+    rows.push(toCsvRow(['Итого', formatDuration(userReport.value.totalSeconds), userReport.value.totalSeconds, userReport.value.entryCount]))
     downloadCsv(`отчёт-по-пользователю-${who}-${periodLabel.value}.csv`, rows)
   } else if (tab.value === 'project' && projectReport.value) {
     const projName = projectReport.value.projectName || `Проект #${projectReport.value.projectId}`
     rows.push(toCsvRow([`Отчёт по проекту: ${projName}`, periodLabel.value]))
     rows.push('')
-    rows.push(toCsvRow(['Пользователь', 'Время', 'Часы', 'Записей']))
-    for (const r of projectRows.value) rows.push(toCsvRow([r.label, formatDuration(r.totalSeconds), hoursForCsv(r.totalSeconds), r.entryCount]))
-    rows.push(toCsvRow(['Итого', formatDuration(projectReport.value.totalSeconds), hoursForCsv(projectReport.value.totalSeconds), projectReport.value.entryCount]))
+    rows.push(toCsvRow(['Пользователь', 'Время', 'Секунды', 'Записей']))
+    for (const r of projectRows.value) rows.push(toCsvRow([r.label, formatDuration(r.totalSeconds), r.totalSeconds, r.entryCount]))
+    rows.push(toCsvRow(['Итого', formatDuration(projectReport.value.totalSeconds), projectReport.value.totalSeconds, projectReport.value.entryCount]))
     downloadCsv(`отчёт-по-проекту-${projName}-${periodLabel.value}.csv`, rows)
   }
 }
