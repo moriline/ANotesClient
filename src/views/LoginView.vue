@@ -17,6 +17,7 @@ const schema = z.object({
 const state = reactive({ username: '', password: '' })
 const submitting = ref(false)
 const error = ref('')
+const showPassword = ref(false)
 
 async function onSubmit() {
   error.value = ''
@@ -48,7 +49,25 @@ async function onSubmit() {
           <UInput v-model="state.username" autofocus class="w-full" placeholder="ivan" />
         </UFormField>
         <UFormField label="Пароль" name="password">
-          <UInput v-model="state.password" type="password" class="w-full" placeholder="••••••••" />
+          <UInput
+            v-model="state.password"
+            :type="showPassword ? 'text' : 'password'"
+            class="w-full"
+            placeholder="••••••••"
+            :ui="{ trailing: 'pe-1' }"
+          >
+            <template #trailing>
+              <UButton
+                :icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                variant="ghost"
+                color="neutral"
+                size="sm"
+                :aria-label="showPassword ? 'Скрыть пароль' : 'Показать пароль'"
+                :aria-pressed="showPassword"
+                @click="showPassword = !showPassword"
+              />
+            </template>
+          </UInput>
         </UFormField>
 
         <p v-if="error" class="text-sm text-error">{{ error }}</p>
