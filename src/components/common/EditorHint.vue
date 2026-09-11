@@ -48,11 +48,11 @@ withDefaults(defineProps<{
           <UKbd>⌘</UKbd>/<UKbd>Ctrl</UKbd> + <UKbd>Enter</UKbd> — {{ submitLabel }}.
         </p>
         <p class="mt-0.5 border-t border-default pt-2">
-          <RouterLink to="/help/markdown" class="text-primary hover:underline">
+          <RouterLink to="/help/markdown" target="_blank" rel="noopener" class="text-primary hover:underline">
             Разметка Markdown
           </RouterLink>
           <span class="text-dimmed"> · </span>
-          <RouterLink to="/help/comments-mentions" class="text-primary hover:underline">
+          <RouterLink to="/help/comments-mentions" target="_blank" rel="noopener" class="text-primary hover:underline">
             про упоминания
           </RouterLink>
         </p>
