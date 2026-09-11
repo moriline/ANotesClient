@@ -814,7 +814,9 @@ function humanizeAction(type: string): string {
           </span>
           <span>#{{ task.id }}</span>
           <span>·</span>
-          <span>{{ project?.name ?? `Проект #${projectIdNum}` }}</span>
+          <RouterLink :to="`/tasks?project=${projectIdNum}`" class="hover:text-primary">
+            {{ project?.name ?? `Проект #${projectIdNum}` }}
+          </RouterLink>
           <template v-if="task.parentId">
             <span>·</span>
             <RouterLink
