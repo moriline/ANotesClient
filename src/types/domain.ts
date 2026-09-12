@@ -525,6 +525,24 @@ export interface WikiFindResponse {
   offset: number
 }
 
+// Вложения страницы (wiki_files_client.md). url — готовый относительный путь
+// (/api/wiki/files/{storedName}), вставляется в content как обычный markdown
+// ![подпись](url) — своей схемы ссылок для изображений нет. isImage считает
+// сервер по содержимому файла, не по mimeType/расширению.
+export interface WikiFileResponse {
+  id: number
+  pageId: number
+  storedName: string
+  originalName: string
+  mimeType: string
+  sizeBytes: number
+  isImage: boolean
+  url: string
+  uploadedBy: number
+  uploadedByName: string
+  uploadedAt: string
+}
+
 // --- Roadmap -----------------------------------------------------------
 // Временная шкала эпиков проекта (roadmap.md). Одна полоса — один эпик, от
 // startDate до dueDate, заливка по childDone/childTotal. Всё считает сервер:

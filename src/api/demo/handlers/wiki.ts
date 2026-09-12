@@ -1,10 +1,53 @@
 import type { Ctx } from '../demoHttp'
 import { db } from '../store'
 import { badRequest, conflict, expectedVersion, nextId, notFound, nowMs, toInt } from '../util'
-import type { DbWikiPage } from '../seed'
+import type { DbWikiFile, DbWikiPage } from '../seed'
 
 function toTreeNode(p: DbWikiPage) {
   return { id: p.id, parentId: p.parentId, title: p.title, position: p.position, summary: p.summary, summaryInferred: false }
+}
+
+function wikiFileUrl(f: DbWikiFile): string {
+  return `/api/wiki/files/${f.storedName}`
+}
+
+function toWikiFileResponse(f: DbWikiFile) {
+  return {
+    id: f.id,
+    pageId: f.pageId,
+    storedName: f.storedName,
+    originalName: f.originalName,
+    mimeType: f.mimeType,
+    sizeBytes: f.sizeBytes,
+    isImage: f.isImage,
+    url: wikiFileUrl(f),
+    uploadedBy: f.uploadedByUserId,
+    uploadedByName: db.users.find(u => u.id === f.uploadedByUserId)?.displayName ?? `Пользователь #${f.uploadedByUserId}`,
+    uploadedAt: f.createdAt
+  }
+}
+
+export function listWikiFiles(ctx: Ctx) {
+  const pageId = Number(ctx.params.pageId)
+  return db.wikiFiles.filter(f => f.pageId === pageId).map(toWikiFileResponse)
+}
+
+// В демо нет настоящего хранилища файлов — как и у файлов задачи (tasks.ts),
+// загрузка вежливо отклоняется вместо притворного успеха без содержимого.
+export function uploadWikiFile(_ctx: Ctx): never {
+  badRequest('В демо загрузка файлов недоступна')
+}
+
+export function deleteWikiFile(ctx: Ctx) {
+  const id = Number(ctx.params.fileId)
+  const file = db.wikiFiles.find(f => f.id === id)
+  if (!file) notFound('Файл не найден')
+  const force = ctx.query.get('force') === 'true'
+  const page = db.wikiPages.find(p => p.id === file.pageId)
+  const usedInText = !!page && page.content.includes(wikiFileUrl(file))
+  if (usedInText && !force) conflict('Файл используется в тексте страницы')
+  db.wikiFiles = db.wikiFiles.filter(f => f.id !== id)
+  return undefined
 }
 
 function toPageResponse(p: DbWikiPage) {

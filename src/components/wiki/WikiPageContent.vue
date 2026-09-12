@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import RelativeTime from '@/components/common/RelativeTime.vue'
 import WikiMarkdown from '@/components/wiki/WikiMarkdown.vue'
+import WikiAttachments from '@/components/wiki/WikiAttachments.vue'
 import { useDictionariesStore } from '@/stores/dictionaries'
 import { useConfirm } from '@/composables/useConfirm'
 import { deleteWikiPage } from '@/api/wiki'
@@ -111,6 +112,8 @@ const menuItems = [[
     </div>
 
     <WikiMarkdown :source="page.content" :project-id="page.projectId" :page-index="pageIndex" />
+
+    <WikiAttachments :page-id="page.id" class="mt-6" />
 
     <div v-if="backlinks.length" class="mt-10 border-t border-default pt-4">
       <p class="mb-2 text-xs font-medium uppercase tracking-wide text-muted">

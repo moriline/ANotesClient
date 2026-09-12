@@ -117,6 +117,9 @@ const routes: Array<[string, string, Handler]> = [
   ['GET', '/wiki/:pageId/revisions', wiki.listRevisions],
   ['GET', '/wiki/:pageId/backlinks', wiki.backlinks],
   ['GET', '/tasks/:taskId/wiki', wiki.taskWiki],
+  ['GET', '/wiki/:pageId/files', wiki.listWikiFiles],
+  ['POST', '/wiki/:pageId/files', wiki.uploadWikiFile],
+  ['DELETE', '/wiki/files/:fileId', wiki.deleteWikiFile],
 
   // --- notifications ----------------------------------------------------------
   ['GET', '/notifications', notifications.listNotifications],

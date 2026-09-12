@@ -94,3 +94,54 @@ export const http = {
     request<T>(path, { ...init, method: 'PATCH', body: jsonBody(body) }),
   delete: <T>(path: string, init?: HttpOptions) => request<T>(path, { ...init, method: 'DELETE' })
 }
+
+/**
+ * Загрузка файла с прогрессом отправки — обычный fetch его не отдаёт, нужен
+ * XMLHttpRequest (wiki_files_client.md §2). В демо-режиме прогресс не нужен
+ * (файлы там не хранятся) — уходит через тот же demoHttp, что и остальные
+ * ручки, и обработчик сам вернёт понятную ошибку "недоступно в демо".
+ */
+export function httpUpload<T>(
+  path: string, form: FormData, onProgress?: (pct: number) => void
+): Promise<T> {
+  if (import.meta.env.VITE_DEMO === 'true') {
+    return request<T>(path, { method: 'POST', body: form })
+  }
+
+  const authStore = useAuthStore()
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `/api${path}`)
+    if (authStore.token) xhr.setRequestHeader('Authorization', `Bearer ${authStore.token}`)
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) onProgress((e.loaded / e.total) * 100)
+    }
+    xhr.onload = () => {
+      if (xhr.status === 401) {
+        authStore.handleUnauthorized()
+        reject(new ApiError(401, 'Не авторизован'))
+        return
+      }
+      if (xhr.status >= 400) {
+        let message = xhr.statusText || `Ошибка ${xhr.status}`
+        let body: unknown
+        try {
+          body = JSON.parse(xhr.responseText)
+          if (body && typeof body === 'object' && 'message' in (body as Record<string, unknown>)) {
+            message = String((body as Record<string, unknown>).message)
+          }
+        } catch { /* тело не JSON — оставляем statusText */ }
+        reject(new ApiError(xhr.status, message, body))
+        return
+      }
+      try {
+        resolve(xhr.responseText ? JSON.parse(xhr.responseText) as T : (undefined as T))
+      } catch {
+        resolve(undefined as T)
+      }
+    }
+    xhr.onerror = () => reject(new ApiError(0, 'Нет связи с сервером'))
+    xhr.send(form)
+  })
+}
