@@ -74,6 +74,7 @@ const navGroup = {
   id: 'nav',
   label: 'Переход',
   items: [
+    { label: 'Моя доска', icon: 'i-lucide-layout-dashboard', onSelect: () => go('/dashboard') },
     { label: 'Задачи', icon: 'i-lucide-check-square', onSelect: () => go('/tasks') },
     { label: 'Проекты', icon: 'i-lucide-folder', onSelect: () => go('/projects') },
     { label: 'Отчёты', icon: 'i-lucide-bar-chart-3', onSelect: () => go('/reports') },

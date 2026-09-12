@@ -7,6 +7,7 @@ import { initials } from '@/utils/format'
 import CommandPalette from '@/components/common/CommandPalette.vue'
 import TaskFormModal from '@/components/task/TaskFormModal.vue'
 import NotificationBell from '@/components/layout/NotificationBell.vue'
+import WorkTimerBar from '@/components/layout/WorkTimerBar.vue'
 
 useShortcuts()
 
@@ -14,6 +15,7 @@ const auth = useAuthStore()
 const mobileOpen = ref(false)
 
 const navItems = [
+  { label: 'Моя доска', icon: 'i-lucide-layout-dashboard', to: '/dashboard' },
   { label: 'Задачи', icon: 'i-lucide-check-square', to: '/tasks' },
   { label: 'Проекты', icon: 'i-lucide-folder', to: '/projects' },
   { label: 'Отчёты', icon: 'i-lucide-bar-chart-3', to: '/reports' },
@@ -87,6 +89,8 @@ const profileMenuItems = computed(() => [
         </UDropdownMenu>
       </div>
     </div>
+
+    <WorkTimerBar />
 
     <USlideover v-model:open="mobileOpen" side="left" title="ANotes">
       <template #body>

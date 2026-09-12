@@ -5,10 +5,12 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import HelpLink from '@/components/common/HelpLink.vue'
 import WikiMarkdown from '@/components/wiki/WikiMarkdown.vue'
+import WikiAttachments from '@/components/wiki/WikiAttachments.vue'
 import { useDictionariesStore } from '@/stores/dictionaries'
 import { useConfirm } from '@/composables/useConfirm'
+import { useWikiFileDrop } from '@/composables/useWikiFileDrop'
 import { createWikiPage, getWikiPage, updateWikiPage } from '@/api/wiki'
-import type { WikiPageUpdateRequest } from '@/types/domain'
+import type { WikiFileResponse, WikiPageUpdateRequest } from '@/types/domain'
 import { ApiError } from '@/api/http'
 import { formatDateTime } from '@/utils/format'
 
@@ -51,6 +53,41 @@ const loadError = ref<string | null>(null)
 const saving = ref(false)
 const savedJustNow = ref(false)
 const showPreview = ref(false)
+
+// --- Вложения (wiki_files_client.md) -------------------------------------
+// Требуют уже сохранённой страницы — привязаны к pageId. UTextarea оборачивает
+// нативный <textarea> и отдаёт его через defineExpose({ textareaRef }); нужен
+// именно нативный элемент, чтобы читать позицию курсора при вставке.
+const contentTextareaComponent = ref<{ textareaRef?: HTMLTextAreaElement } | null>(null)
+const contentTextarea = ref<HTMLTextAreaElement>()
+watch(contentTextareaComponent, (c) => { contentTextarea.value = c?.textareaRef }, { immediate: true })
+const contentModel = computed({
+  get: () => form.content,
+  set: (v: string) => { form.content = v }
+})
+const attachmentsRef = ref<{ refresh: () => void } | null>(null)
+const fileInputEl = ref<HTMLInputElement>()
+const dragging = ref(false)
+
+const { onDrop, onPaste, uploading, insert, insertReference } = useWikiFileDrop(
+  pageIdNum, contentTextarea, contentModel,
+  () => attachmentsRef.value?.refresh()
+)
+
+function onDropZone(e: DragEvent) {
+  dragging.value = false
+  onDrop(e)
+}
+
+function onFileInputChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  Array.from(input.files ?? []).forEach(f => insert(f))
+  input.value = ''
+}
+
+function onInsertExisting(file: WikiFileResponse) {
+  insertReference(file)
+}
 
 const project = computed(() => dictionaries.projectById.get(pid.value))
 const tree = computed(() => dictionaries.wikiTreeByProject[pid.value] ?? [])
@@ -407,17 +444,63 @@ onBeforeRouteLeave(() => {
             </UButton>
           </div>
           <div class="grid gap-4" :class="showPreview ? 'lg:grid-cols-2' : ''">
-            <UTextarea
-              id="wiki-content"
-              v-model="form.content"
-              :rows="22"
-              class="w-full font-mono text-sm"
-              placeholder="Markdown. [[Заголовок]] — ссылка на страницу, #123 — на задачу."
-            />
+            <div
+              class="relative"
+              @drop.prevent="onDropZone"
+              @dragover.prevent="dragging = true"
+              @dragleave="dragging = false"
+            >
+              <UTextarea
+                id="wiki-content"
+                ref="contentTextareaComponent"
+                v-model="form.content"
+                :rows="22"
+                class="w-full font-mono text-sm"
+                placeholder="Markdown. [[Заголовок]] — ссылка на страницу, #123 — на задачу. Файлы и картинки — перетащите сюда или вставьте из буфера."
+                @paste="onPaste"
+              />
+              <div
+                v-if="dragging"
+                class="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-primary/5"
+              >
+                <span class="text-sm text-primary">Отпустите, чтобы загрузить</span>
+              </div>
+            </div>
             <div v-if="showPreview" class="min-w-0 rounded-lg border border-default px-4 py-3">
               <WikiMarkdown :source="form.content" :project-id="pid" :page-index="pageIndex" />
             </div>
           </div>
+
+          <div v-if="uploading.length" class="flex flex-col gap-1.5">
+            <div v-for="u in uploading" :key="u.name" class="flex flex-col gap-1">
+              <div class="flex items-center gap-2 text-xs text-muted">
+                <UIcon name="i-lucide-upload" class="size-3.5 shrink-0" />
+                <span class="min-w-0 flex-1 truncate">{{ u.name }}</span>
+                <span class="shrink-0 font-mono">{{ Math.round(u.pct) }}%</span>
+              </div>
+              <UProgress :model-value="u.pct" size="xs" color="primary" />
+            </div>
+          </div>
+
+          <input
+            ref="fileInputEl"
+            type="file"
+            multiple
+            class="hidden"
+            @change="onFileInputChange"
+          >
+
+          <WikiAttachments
+            v-if="pageIdNum"
+            ref="attachmentsRef"
+            :page-id="pageIdNum"
+            editable
+            @pick="fileInputEl?.click()"
+            @insert="onInsertExisting"
+          />
+          <p v-else class="text-xs text-muted">
+            Файлы и картинки можно прикрепить после первого сохранения страницы.
+          </p>
         </div>
 
         <div class="flex flex-col gap-1.5 sm:max-w-md">

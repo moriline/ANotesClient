@@ -128,6 +128,18 @@ export interface DbFile {
   createdAt: number
 }
 
+export interface DbWikiFile {
+  id: number
+  pageId: number
+  storedName: string
+  originalName: string
+  mimeType: string
+  sizeBytes: number
+  isImage: boolean
+  uploadedByUserId: number
+  createdAt: string
+}
+
 export interface DbMilestone {
   id: number
   projectId: number
@@ -198,6 +210,7 @@ export interface DemoDb {
   timeEntries: DbTimeEntry[]
   activity: DbActivity[]
   files: DbFile[]
+  wikiFiles: DbWikiFile[]
   milestones: DbMilestone[]
   wikiPages: DbWikiPage[]
   wikiRevisions: DbWikiRevision[]
@@ -420,6 +433,13 @@ export function buildSeed(): DemoDb {
     { id: 1102, taskId: 42, projectId: PID_WEB, fileName: 'index-benchmark.png', fileOriginalName: 'index-benchmark.png', fileSize: 128_400, mimeType: 'image/png', fileUrl: '#', uploadedByUserId: 2, createdAt: d(-1) }
   ]
 
+  // Вложения вики (тоже фиктивные — storedName не отдаёт реальный файл, при
+  // просмотре/скачивании покажется заглушка «Изображение недоступно», это
+  // ожидаемо для статичного демо без хранилища).
+  const wikiFiles: DbWikiFile[] = [
+    { id: 1201, pageId: 801, storedName: 'demo-architecture.png', originalName: 'architecture.png', mimeType: 'image/png', sizeBytes: 214_600, isImage: true, uploadedByUserId: 2, createdAt: new Date(d(-3)).toISOString() }
+  ]
+
   // --- Вики: 5 страниц, 2 вложенные, ссылки и ревизии -----------------------
   const wikiPages: DbWikiPage[] = [
     {
@@ -487,6 +507,7 @@ export function buildSeed(): DemoDb {
     timeEntries,
     activity,
     files,
+    wikiFiles,
     milestones,
     wikiPages,
     wikiRevisions,

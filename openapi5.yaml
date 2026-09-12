@@ -1,4 +1,4 @@
-# ANotes API — OpenAPI 3.0.3
+# TaskMind API — OpenAPI 3.0.3
 #
 # СГЕНЕРИРОВАНО из аннотаций ресурсов (quarkus-smallrye-openapi), не править руками.
 # Живая версия отдаётся приложением на /q/openapi (?format=yaml), Swagger UI — /q/swagger-ui.
@@ -12,8 +12,8 @@
 ---
 openapi: 3.0.3
 info:
-  title: ANotes API
-  description: REST API менеджера задач и базы знаний ANotes
+  title: TaskMind API
+  description: REST API менеджера задач и базы знаний ANotes/TaskMind
   version: 5.0.0
 paths:
   /api/admin/users:
@@ -93,8 +93,8 @@ paths:
         Подмножество основной спеки — операции, доступные агенту: поиск задач,
         чтение и правка задачи, комментарии, резюме, списание времени, статусы
         проекта, список проектов, эпики проекта, вики (дерево, страница,
-        поиск). Скормите этот документ модели как набор инструментов вместо
-        полного /q/openapi.
+        поиск, список вложений страницы). Скормите этот документ модели как
+        набор инструментов вместо полного /q/openapi.
       responses:
         "200":
           description: OK
@@ -2131,6 +2131,60 @@ paths:
           description: Not Allowed
       security:
       - bearerAuth: []
+  /api/wiki/files/{id}:
+    delete:
+      tags:
+      - Wiki File Resource
+      summary: Удалить вложение вики
+      description: |
+        Файл используется в тексте страницы — 409 с предложением убрать ссылку
+        или повторить с ?force=true. Нужно право task:update. Агенту недоступно.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      - name: force
+        in: query
+        schema:
+          default: false
+          type: boolean
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/wiki/files/{storedName}:
+    get:
+      tags:
+      - Wiki File Resource
+      summary: Отдать вложение вики
+      description: |
+        Изображения отдаются inline (для <img>), остальное — attachment.
+        Content-Security-Policy: sandbox и X-Content-Type-Options: nosniff —
+        защита от исполнения загруженного HTML/SVG в контексте домена.
+        Кэш бессрочный: storedName — UUID, содержимое по нему не меняется.
+      parameters:
+      - name: storedName
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
   /api/wiki/find:
     post:
       tags:
@@ -2278,6 +2332,68 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/WikiBacklinkResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+  /api/wiki/{pageId}/files:
+    get:
+      tags:
+      - Wiki File Resource
+      summary: Вложения страницы вики
+      parameters:
+      - name: pageId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WikiFileResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
+    post:
+      tags:
+      - Wiki File Resource
+      summary: Загрузить вложение страницы вики
+      description: |
+        Принимает один файл. Возвращает метаданные вместе с готовым url,
+        который вставляется в Markdown страницы как ![подпись](url).
+        Ограничения на размер, число вложений на странице и разрешённые типы —
+        в конфигурации сервера; SVG не поддерживается. Тип определяется по
+        содержимому файла, а не по расширению или заявленному Content-Type.
+        Нужно право task:update. Агенту недоступно.
+      parameters:
+      - name: pageId
+        in: path
+        required: true
+        schema:
+          format: int32
+          type: integer
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  $ref: "#/components/schemas/FileUpload"
+      responses:
+        "200":
+          description: OK
         "401":
           description: Not Authorized
         "403":
@@ -3377,6 +3493,35 @@ components:
           type: integer
         title:
           type: string
+    WikiFileResponse:
+      type: object
+      properties:
+        id:
+          format: int32
+          type: integer
+        pageId:
+          format: int32
+          type: integer
+        storedName:
+          type: string
+        originalName:
+          type: string
+        mimeType:
+          type: string
+        sizeBytes:
+          format: int64
+          type: integer
+        isImage:
+          type: boolean
+        url:
+          type: string
+        uploadedBy:
+          format: int32
+          type: integer
+        uploadedByName:
+          type: string
+        uploadedAt:
+          $ref: "#/components/schemas/Instant"
     WikiFindRequest:
       type: object
       properties:

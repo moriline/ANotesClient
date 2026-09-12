@@ -16,6 +16,7 @@ import EpicTaskList from '@/components/task/EpicTaskList.vue'
 import ProjectFormModal from '@/components/project/ProjectFormModal.vue'
 import { useDictionariesStore } from '@/stores/dictionaries'
 import { useAuthStore } from '@/stores/auth'
+import { useWorkTimerStore } from '@/stores/workTimer'
 import { useConfirm } from '@/composables/useConfirm'
 import { bumpTasksVersion } from '@/composables/useGlobalUi'
 import { getTask, updateTask, deleteTask, createTask, setTaskParent, convertTask } from '@/api/tasks'
@@ -28,7 +29,7 @@ import { getTaskSummary, updateTaskSummary } from '@/api/taskSummary'
 import { getTaskTotalSeconds, listTimeEntries, logTime, deleteTimeEntry } from '@/api/timeEntries'
 import { getTaskWikiPages } from '@/api/wiki'
 import { ApiError } from '@/api/http'
-import { formatDate, formatDuration, initials } from '@/utils/format'
+import { formatClock, formatDate, formatDuration, initials } from '@/utils/format'
 import { resolveMentions, type MentionUser } from '@/utils/mentions'
 import type { ActivityResponse, CommentResponse, FileResponse, TaskResponse, TaskUpdateRequest, TimeEntry, WikiBacklinkResponse } from '@/types/domain'
 
@@ -36,8 +37,16 @@ const props = defineProps<{ projectId: string; taskId: string }>()
 const router = useRouter()
 const dictionaries = useDictionariesStore()
 const auth = useAuthStore()
+const timer = useWorkTimerStore()
 const toast = useToast()
 const { confirm } = useConfirm()
+
+const isThisTaskTimer = computed(() => timer.active?.taskId === taskIdNum.value)
+
+function toggleTimer() {
+  if (!task.value) return
+  timer.requestStart({ id: taskIdNum.value, projectId: projectIdNum.value, title: task.value.title })
+}
 
 const projectIdNum = computed(() => Number(props.projectId))
 const taskIdNum = computed(() => Number(props.taskId))
@@ -1202,6 +1211,22 @@ function humanizeAction(type: string): string {
             </p>
 
             <div v-else class="flex flex-col gap-3">
+              <div v-if="isThisTaskTimer" class="flex items-center gap-2 rounded-md border border-primary/30 bg-primary-50/60 px-2.5 py-2">
+                <UIcon name="i-lucide-timer" class="size-4 shrink-0 text-primary" />
+                <span class="flex-1 font-mono text-sm tabular-nums">{{ formatClock(timer.elapsedSeconds) }}</span>
+                <UButton
+                  :icon="timer.isRunning ? 'i-lucide-pause' : 'i-lucide-play'"
+                  variant="ghost"
+                  color="primary"
+                  size="xs"
+                  @click="timer.isRunning ? timer.pause() : timer.resume()"
+                />
+                <UButton icon="i-lucide-square" variant="ghost" color="primary" size="xs" @click="timer.requestStop()" />
+              </div>
+              <UButton v-else icon="i-lucide-play" variant="outline" color="primary" block @click="toggleTimer">
+                Запустить таймер
+              </UButton>
+
               <UFormField label="Дата">
                 <input
                   v-model="logDate"
