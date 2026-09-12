@@ -106,6 +106,16 @@ const laterTasks = computed(() => openTasks.value.filter(t =>
   t.dueDate == null || (!isOverdue(t.dueDate) && t.dueDate > Date.now() + WEEK_MS)
 ))
 
+// Закрытые задачи уже приходят тем же запросом (statusId не фильтруется) —
+// не выбрасываем их, а показываем последние сутки отдельным блоком. updatedAt
+// это «последняя правка», а не «дата закрытия», но для витрины (не для
+// подсчёта) точность не критична.
+const DAY_MS = 86_400_000
+const recentlyClosedTasks = computed(() => filteredTasks.value
+  .filter(t => isClosed(t) && Date.now() - new Date(t.updatedAt).getTime() <= DAY_MS)
+  .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+)
+
 function projectName(id: number): string {
   return dictionaries.projectById.get(id)?.name ?? `Проект #${id}`
 }
@@ -140,7 +150,7 @@ onMounted(() => {
       </div>
 
       <EmptyState
-        v-else-if="!openTasks.length"
+        v-else-if="!openTasks.length && !recentlyClosedTasks.length"
         icon="i-lucide-circle-check"
         title="Ничего не назначено"
         description="Задач, где вы исполнитель и которые ещё не закрыты, не найдено."
@@ -213,6 +223,27 @@ onMounted(() => {
               <UBadge v-if="t.milestoneTitle" variant="subtle" color="secondary" size="sm">{{ t.milestoneTitle }}</UBadge>
               <StatusBadge :status="dictionaries.statusFor(t.projectId, t.statusId)" />
               <DueDate :value="t.dueDate" />
+            </RouterLink>
+          </div>
+        </section>
+
+        <section v-if="recentlyClosedTasks.length">
+          <h2 class="mb-3 flex items-center gap-1.5 text-sm font-semibold text-muted">
+            <UIcon name="i-lucide-check-circle-2" class="size-4" />
+            Недавно закрыто ({{ recentlyClosedTasks.length }})
+          </h2>
+          <div class="flex flex-col divide-y divide-default rounded-lg border border-default opacity-70">
+            <RouterLink
+              v-for="t in recentlyClosedTasks"
+              :key="t.id"
+              :to="`/tasks/${t.projectId}/${t.id}`"
+              class="flex flex-wrap items-center gap-2 px-3 py-2.5 hover:bg-elevated/60"
+            >
+              <span class="w-12 shrink-0 font-mono text-xs text-muted">#{{ t.id }}</span>
+              <span class="min-w-0 flex-1 truncate text-sm text-muted line-through">{{ t.title }}</span>
+              <UBadge variant="subtle" color="neutral" size="sm">{{ projectName(t.projectId) }}</UBadge>
+              <UBadge v-if="t.milestoneTitle" variant="subtle" color="secondary" size="sm">{{ t.milestoneTitle }}</UBadge>
+              <StatusBadge :status="dictionaries.statusFor(t.projectId, t.statusId)" />
             </RouterLink>
           </div>
         </section>
