@@ -40,6 +40,13 @@ export const router = createRouter({
       meta: { public: true, chrome: false }
     },
     {
+      // Личная доска — «мои задачи» через все проекты, без выбора одного
+      // проекта (в отличие от /tasks). См. help/content/dashboard.md.
+      path: '/dashboard',
+      name: 'dashboard',
+      component: () => import('@/views/DashboardView.vue')
+    },
+    {
       path: '/tasks',
       name: 'tasks',
       component: () => import('@/views/TaskListView.vue')

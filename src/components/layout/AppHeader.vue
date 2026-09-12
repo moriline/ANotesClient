@@ -14,6 +14,7 @@ const auth = useAuthStore()
 const mobileOpen = ref(false)
 
 const navItems = [
+  { label: 'Моя доска', icon: 'i-lucide-layout-dashboard', to: '/dashboard' },
   { label: 'Задачи', icon: 'i-lucide-check-square', to: '/tasks' },
   { label: 'Проекты', icon: 'i-lucide-folder', to: '/projects' },
   { label: 'Отчёты', icon: 'i-lucide-bar-chart-3', to: '/reports' },
