@@ -4,10 +4,11 @@
 // тот же POST /api/tasks/{id}/time, что и ручная форма на странице задачи —
 // таймер не заводит отдельного способа сохранения времени.
 import { ref, watch } from 'vue'
-import { useWorkTimerStore } from '@/stores/workTimer'
+import { FORGOTTEN_AFTER_SECONDS, useWorkTimerStore } from '@/stores/workTimer'
 import { logTime } from '@/api/timeEntries'
 import { bumpTasksVersion } from '@/composables/useGlobalUi'
 import { ApiError } from '@/api/http'
+import { formatDuration } from '@/utils/format'
 
 const timer = useWorkTimerStore()
 const toast = useToast()
@@ -19,7 +20,9 @@ const saving = ref(false)
 
 watch(() => timer.logModalOpen, (open) => {
   if (!open) return
-  const total = Math.round(timer.elapsedSeconds)
+  // Забытый таймер (шёл дольше рабочего дня) — не подставляем реальные часы
+  // как есть, предлагаем разумные 8ч, а дальше человек сам решает.
+  const total = timer.forgotten ? FORGOTTEN_AFTER_SECONDS : Math.round(timer.elapsedSeconds)
   hours.value = Math.floor(total / 3600)
   minutes.value = Math.round((total % 3600) / 60)
   description.value = ''
@@ -63,6 +66,14 @@ function discard() {
         <p class="text-sm text-muted">
           <span class="font-medium text-highlighted">{{ timer.active.taskTitle }}</span> — таймер остановлен на паузе.
         </p>
+        <UAlert
+          v-if="timer.forgotten"
+          color="warning"
+          variant="subtle"
+          icon="i-lucide-alarm-clock"
+          title="Похоже, вы забыли его остановить"
+          :description="`Таймер шёл ${formatDuration(timer.forgottenElapsedSeconds)} — вряд ли это реально отработанное время. Ниже подставлено 8 часов, поправьте вручную или сбросьте, если это ошибка.`"
+        />
         <p v-if="timer.pendingStart" class="text-xs text-muted">
           Чтобы запустить таймер по «{{ timer.pendingStart.title }}», сначала запишите или сбросьте это время.
         </p>

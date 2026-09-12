@@ -41,6 +41,12 @@ export interface TimerTaskRef {
   title: string
 }
 
+// Самая частая беда однотаймерных систем: включили в пятницу, вспомнили в
+// понедельник — localStorage хранит момент старта, а не тики, поэтому счётчик
+// после возврата (хоть с закрытой вкладкой, хоть с уснувшим ноутбуком) честно
+// посчитает реальные часы, включая ночь. Молча тащить это в отчёт нельзя.
+export const FORGOTTEN_AFTER_SECONDS = 8 * 3600
+
 export const useWorkTimerStore = defineStore('workTimer', () => {
   const active = ref<StoredTimer | null>(load())
   // Тикает раз в секунду, пока таймер запущен, чтобы elapsedSeconds обновлялся
@@ -63,6 +69,22 @@ export const useWorkTimerStore = defineStore('workTimer', () => {
   }
   ensureTicking()
   onScopeDispose(stopTicking)
+
+  // Проверка при загрузке страницы (сразу, до первой отрисовки полоски):
+  // если таймер шёл дольше рабочего дня, замораживаем его и просим
+  // определиться — записать 8ч / указать своё (оба варианта — обычная форма
+  // ниже, просто с другим значением по умолчанию) / сбросить.
+  const forgotten = ref(false)
+  const forgottenElapsedSeconds = ref(0)
+  if (active.value?.runningSince) {
+    const wallElapsed = active.value.accumulatedSeconds + (Date.now() - active.value.runningSince) / 1000
+    if (wallElapsed > FORGOTTEN_AFTER_SECONDS) {
+      pause()
+      forgotten.value = true
+      forgottenElapsedSeconds.value = wallElapsed
+      logModalOpen.value = true
+    }
+  }
 
   const elapsedSeconds = computed(() => {
     void tick.value
@@ -128,6 +150,7 @@ export const useWorkTimerStore = defineStore('workTimer', () => {
   // Вызывается модалкой после того, как текущий таймер записан или сброшен.
   function resolveModal() {
     logModalOpen.value = false
+    forgotten.value = false
     if (pendingStart.value) {
       const next = pendingStart.value
       pendingStart.value = null
@@ -139,6 +162,7 @@ export const useWorkTimerStore = defineStore('workTimer', () => {
   // таймер остаётся как есть (на паузе, если это было переключение).
   function cancelModal() {
     logModalOpen.value = false
+    forgotten.value = false
     pendingStart.value = null
   }
 
@@ -148,6 +172,8 @@ export const useWorkTimerStore = defineStore('workTimer', () => {
     isRunning,
     logModalOpen,
     pendingStart,
+    forgotten,
+    forgottenElapsedSeconds,
     requestStart,
     requestStop,
     pause,
