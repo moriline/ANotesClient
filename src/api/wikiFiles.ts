@@ -1,4 +1,4 @@
-import { http, httpUpload } from './http'
+import { API_ORIGIN, http, httpUpload } from './http'
 import { useAuthStore } from '@/stores/auth'
 import type { WikiFileResponse } from '@/types/domain'
 
@@ -24,10 +24,15 @@ export function deleteWikiFile(id: number, force = false) {
  * файлов задачи в files.ts). Поэтому картинки в тексте страницы вставляются
  * обычной markdown-ссылкой на этот путь, а рендерер (useAuthorizedImages)
  * донагружает их авторизованным fetch и подменяет src на blob-URL.
+ *
+ * url приходит от сервера уже готовым, но относительным (WikiFileResponse.url,
+ * например «/api/wiki/files/…») — если бэкенд настроен на другом origin
+ * (VITE_API_URL), дополняем его тем же origin, что и все остальные запросы.
  */
 export async function fetchWikiFileBlob(url: string): Promise<string> {
   const auth = useAuthStore()
-  const res = await fetch(url, {
+  const fullUrl = /^https?:\/\//.test(url) ? url : `${API_ORIGIN}${url}`
+  const res = await fetch(fullUrl, {
     headers: auth.token ? { Authorization: `Bearer ${auth.token}` } : {}
   })
   if (!res.ok) throw new Error('Не удалось загрузить файл')

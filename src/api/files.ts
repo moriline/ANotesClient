@@ -1,4 +1,4 @@
-import { http } from './http'
+import { API_ORIGIN, http } from './http'
 import { useAuthStore } from '@/stores/auth'
 import type { FileResponse } from '@/types/domain'
 
@@ -24,7 +24,7 @@ export function deleteFile(fileId: number) {
  */
 function fetchFile(fileName: string): Promise<Response> {
   const auth = useAuthStore()
-  return fetch(`/api/files/download/${encodeURIComponent(fileName)}`, {
+  return fetch(`${API_ORIGIN}/api/files/download/${encodeURIComponent(fileName)}`, {
     headers: auth.token ? { Authorization: `Bearer ${auth.token}` } : {}
   })
 }

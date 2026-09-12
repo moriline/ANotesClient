@@ -1,4 +1,4 @@
-import { ApiError, http } from './http'
+import { API_ORIGIN, ApiError, http } from './http'
 import type { AuthResponse, LoginRequest, RegisterRequest } from '@/types/domain'
 
 export function login(payload: LoginRequest) {
@@ -27,7 +27,7 @@ export function requestAgentToken() {
 // отдаём как есть, для скачивания файлом. Не идёт через http-обёртку: нужен
 // сырой текст, а не разобранный JSON, и 401 здесь не должен разлогинивать.
 export async function fetchAgentOpenApi(bearer: string): Promise<string> {
-  const res = await fetch('/api/agent/openapi.json', {
+  const res = await fetch(`${API_ORIGIN}/api/agent/openapi.json`, {
     headers: { Authorization: `Bearer ${bearer}` }
   })
   if (!res.ok) throw new ApiError(res.status, `Спецификация недоступна (${res.status})`)

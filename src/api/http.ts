@@ -1,5 +1,13 @@
 import { useAuthStore } from '@/stores/auth'
 
+// Адрес бэкенда. Пусто по умолчанию — /api резолвится относительно домена,
+// откуда отдана сама страница (дев-прокси в vite.config.ts в разработке,
+// общий реверс-прокси в проде). Если бэкенд живёт на другом origin — задать
+// VITE_API_URL в .env.production.local (см. .env.example), без правок кода:
+// https://api.example.com, без завершающего /. Бэкенду в этом случае нужен
+// CORS на этот origin (заголовок Authorization не требует credentials).
+export const API_ORIGIN = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
+
 export class ApiError extends Error {
   status: number
   body: unknown
@@ -42,7 +50,7 @@ async function request<T>(path: string, init: HttpOptions = {}): Promise<T> {
 
   let res: Response
   try {
-    res = await fetch(`/api${path}`, { ...rest, headers: finalHeaders })
+    res = await fetch(`${API_ORIGIN}/api${path}`, { ...rest, headers: finalHeaders })
   } catch {
     throw new ApiError(0, 'Нет связи с сервером')
   }
@@ -111,7 +119,7 @@ export function httpUpload<T>(
   const authStore = useAuthStore()
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
-    xhr.open('POST', `/api${path}`)
+    xhr.open('POST', `${API_ORIGIN}/api${path}`)
     if (authStore.token) xhr.setRequestHeader('Authorization', `Bearer ${authStore.token}`)
 
     xhr.upload.onprogress = (e) => {

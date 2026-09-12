@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { useAuthStore } from '@/stores/auth'
 import { requestAgentToken, fetchAgentOpenApi } from '@/api/auth'
-import { ApiError } from '@/api/http'
+import { API_ORIGIN, ApiError } from '@/api/http'
 import { formatDateTime } from '@/utils/format'
 import { jwtExpiresAt } from '@/utils/jwt'
 
@@ -14,8 +14,11 @@ import { jwtExpiresAt } from '@/utils/jwt'
 const auth = useAuthStore()
 const toast = useToast()
 
-const apiBase = `${location.origin}/api`
-const openApiUrl = `${location.origin}/api/agent/openapi.json`
+// Адрес API — тот же origin, что и у бэкенда всех остальных запросов
+// (VITE_API_URL, если задан; иначе бэкенд на одном origin с этой страницей).
+const backendOrigin = API_ORIGIN || location.origin
+const apiBase = `${backendOrigin}/api`
+const openApiUrl = `${backendOrigin}/api/agent/openapi.json`
 const agentPageUrl = `${location.origin}/agent`
 
 const tokenExpiresAt = computed(() => jwtExpiresAt(auth.agentToken))
