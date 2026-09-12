@@ -7,6 +7,7 @@ import { initials } from '@/utils/format'
 import CommandPalette from '@/components/common/CommandPalette.vue'
 import TaskFormModal from '@/components/task/TaskFormModal.vue'
 import NotificationBell from '@/components/layout/NotificationBell.vue'
+import WorkTimerBar from '@/components/layout/WorkTimerBar.vue'
 
 useShortcuts()
 
@@ -88,6 +89,8 @@ const profileMenuItems = computed(() => [
         </UDropdownMenu>
       </div>
     </div>
+
+    <WorkTimerBar />
 
     <USlideover v-model:open="mobileOpen" side="left" title="ANotes">
       <template #body>

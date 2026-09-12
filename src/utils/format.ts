@@ -48,6 +48,17 @@ export function isDueToday(dueDate: number | null | undefined): boolean {
   return due.toDateString() === now.toDateString()
 }
 
+// Тикающий дисплей таймера — HH:MM:SS (или MM:SS, если меньше часа), в отличие
+// от formatDuration, который округляет до минут для итоговых сумм.
+export function formatClock(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds))
+  const hours = Math.floor(s / 3600)
+  const minutes = Math.floor((s % 3600) / 60)
+  const seconds = s % 60
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return hours > 0 ? `${pad(hours)}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`
+}
+
 export function formatDuration(totalSeconds: number | null | undefined): string {
   if (!totalSeconds) return '0м'
   const hours = Math.floor(totalSeconds / 3600)
