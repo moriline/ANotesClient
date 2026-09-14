@@ -74,6 +74,7 @@ const routes: Array<[string, string, Handler]> = [
 
   ['GET', '/tasks/:taskId/comments', tasks.listComments],
   ['POST', '/tasks/:taskId/comments', tasks.createComment],
+  ['POST', '/comments/find', tasks.findComments],
   ['PUT', '/comments/:commentId', tasks.updateComment],
   ['DELETE', '/comments/:commentId', tasks.deleteComment],
 
@@ -83,6 +84,7 @@ const routes: Array<[string, string, Handler]> = [
   ['GET', '/tasks/:taskId/time', tasks.timeTotal],
   ['GET', '/tasks/:taskId/time/entries', tasks.listTimeEntries],
   ['POST', '/tasks/:taskId/time', tasks.createTimeEntry],
+  ['POST', '/time-entries/find', tasks.findTimeEntries],
   ['DELETE', '/tasks/:taskId/time/entries/:entryId', tasks.deleteTimeEntry],
 
   ['GET', '/projects/:projectId/activity', tasks.projectActivity],

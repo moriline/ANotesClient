@@ -1,14 +1,3 @@
-# TaskMind API — OpenAPI 3.0.3
-#
-# СГЕНЕРИРОВАНО из аннотаций ресурсов (quarkus-smallrye-openapi), не править руками.
-# Живая версия отдаётся приложением на /q/openapi (?format=yaml), Swagger UI — /q/swagger-ui.
-# Обновить этот снимок:
-#   mvn clean package -DskipTests
-#   java -jar target/quarkus-app/quarkus-run.jar        # затем
-#   curl -s "http://localhost:8080/q/openapi?format=yaml" -o openapi5.yaml
-#
-# Заменяет openAPI.yaml, openapi2.yaml, openapi3.yaml и openapi4.yaml: те писались
-# руками, расходились с кодом и между собой (см. коммит).
 ---
 openapi: 3.0.3
 info:
@@ -165,6 +154,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
+  /api/comments/find:
+    post:
+      tags:
+      - Comment Resource
+      summary: Найти комментарии
+      description: |
+        Поиск комментариев по подстроке в тексте. Без taskId — по всем
+        задачам всех доступных вызывающему проектов; taskId сужает до
+        одной задачи. contentSearch — подстрока (регистронезависимо);
+        без него — просто список с пагинацией. limit (≤200, по
+        умолчанию 50), offset.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentSearchRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentSearchResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
   /api/comments/{commentId}:
     put:
       tags:
@@ -2046,6 +2064,35 @@ paths:
           description: Not Allowed
       security:
       - bearerAuth: []
+  /api/time-entries/find:
+    post:
+      tags:
+      - Time Entry Search Resource
+      summary: Найти списания времени
+      description: |
+        Поиск списаний по подстроке в description. Без taskId — по всем
+        задачам всех доступных вызывающему проектов; taskId сужает до
+        одной задачи. descriptionSearch — подстрока (регистронезависимо);
+        без него — просто список с пагинацией, по убыванию startTime.
+        limit (≤200, по умолчанию 50), offset.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TimeEntrySearchRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TimeEntrySearchResponse"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      security:
+      - bearerAuth: []
   /api/users:
     get:
       tags:
@@ -2592,6 +2639,36 @@ components:
           type: boolean
         updatedAt:
           $ref: "#/components/schemas/Instant"
+    CommentSearchRequest:
+      type: object
+      properties:
+        taskId:
+          format: int32
+          type: integer
+        contentSearch:
+          type: string
+        limit:
+          format: int32
+          type: integer
+        offset:
+          format: int32
+          type: integer
+    CommentSearchResponse:
+      type: object
+      properties:
+        comments:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommentResponse"
+        total:
+          format: int64
+          type: integer
+        limit:
+          format: int32
+          type: integer
+        offset:
+          format: int32
+          type: integer
     DiscussionBlockRequest:
       required:
       - content
@@ -3374,6 +3451,36 @@ components:
           type: string
         startTime:
           format: int64
+          type: integer
+    TimeEntrySearchRequest:
+      type: object
+      properties:
+        taskId:
+          format: int32
+          type: integer
+        descriptionSearch:
+          type: string
+        limit:
+          format: int32
+          type: integer
+        offset:
+          format: int32
+          type: integer
+    TimeEntrySearchResponse:
+      type: object
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimeEntry"
+        total:
+          format: int64
+          type: integer
+        limit:
+          format: int32
+          type: integer
+        offset:
+          format: int32
           type: integer
     TimeReportResponse:
       type: object

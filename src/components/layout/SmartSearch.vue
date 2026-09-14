@@ -2,18 +2,28 @@
 // «Умный поиск» из todo.txt п.1 — попап с разделами поиска ровно под полем
 // ввода (закрытие по Esc/клику вне — как в CommandPalette.vue), поле
 // расширяется до трети экрана при открытии. Разделы «Комментарии» и «Логи
-// времени» — заглушки: у API нет ручек поиска по комментариям/учёту времени
-// сразу по всем проектам (только по одной задаче за раз), делать полный
-// перебор задач всех проектов на каждый ввод — неоправданный фан-аут запросов.
-// Фильтр «Проект» уже здесь, чтобы потом ограничить этими двумя разделами
-// поиск одним проектом, когда для него появится серверная поддержка.
+// времени» — через POST /api/comments/find и /api/time-entries/find
+// (contentSearch/descriptionSearch, регистронезависимо, по всем задачам
+// доступных проектов сразу). У обеих ручек нет параметра projectId — только
+// taskId или ничего, поэтому фильтр «Проект» применяется на клиенте: через
+// loadTaskLookup(pid) подтягивается набор задач нужного проекта (до 200,
+// как и everywhere в этом клиенте), и по нему одновременно фильтруются
+// результаты и резолвится название задачи/проекта для ссылки. Без фильтра
+// проекта резолвим по последним 200 обновлённым задачам — попадание не
+// гарантировано на очень старых задачах, это допустимо для превью в попапе,
+// не авторитетный отчёт.
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDictionariesStore } from '@/stores/dictionaries'
 import { findTasks } from '@/api/tasks'
+import { findComments } from '@/api/comments'
+import { findTimeEntries } from '@/api/timeEntries'
 import { listUsers } from '@/api/users'
-import { initials } from '@/utils/format'
-import type { ProjectResponse, TaskResponse, UserSummary } from '@/types/domain'
+import { initials, formatDuration } from '@/utils/format'
+import type { CommentResponse, ProjectResponse, TaskResponse, TimeEntry, UserSummary } from '@/types/domain'
+
+interface CommentHit { comment: CommentResponse; task?: TaskResponse }
+interface LogHit { entry: TimeEntry; task?: TaskResponse }
 
 const router = useRouter()
 const dictionaries = useDictionariesStore()
@@ -26,7 +36,9 @@ const rootEl = ref<HTMLElement | null>(null)
 
 const projectResults = ref<ProjectResponse[]>([])
 const taskResults = ref<TaskResponse[]>([])
+const commentResults = ref<CommentHit[]>([])
 const peopleResults = ref<UserSummary[]>([])
+const logResults = ref<LogHit[]>([])
 const searched = ref(false)
 
 const projectFilterItems = computed(() => [
@@ -52,8 +64,27 @@ function close() {
 function clearResults() {
   projectResults.value = []
   taskResults.value = []
+  commentResults.value = []
   peopleResults.value = []
+  logResults.value = []
   searched.value = false
+}
+
+// Живёт, пока смонтирован SmartSearch (весь сеанс) — то же допущение о
+// приемлемой устаревании кэша, что и у dictionaries.* в этом приложении.
+const taskLookupCache = new Map<number | 'all', Promise<Map<number, TaskResponse>>>()
+function loadTaskLookup(pid?: number): Promise<Map<number, TaskResponse>> {
+  const key = pid ?? 'all'
+  const cached = taskLookupCache.get(key)
+  if (cached) return cached
+  const request = pid
+    ? findTasks({ projectId: pid, limit: 200 })
+    : findTasks({ limit: 200, sortBy: 'updatedAt', sortDir: 'desc' })
+  const promise = request
+    .then(r => new Map(r.tasks.map(t => [t.id, t])))
+    .catch(() => new Map<number, TaskResponse>())
+  taskLookupCache.set(key, promise)
+  return promise
 }
 
 let debounceTimer: ReturnType<typeof setTimeout> | undefined
@@ -98,9 +129,27 @@ async function runSearch(q: string) {
   }
 
   try {
+    const lookup = await loadTaskLookup(pid)
+    const res = await findComments({ contentSearch: q, limit: pid ? 50 : 8 })
+    const comments = pid ? res.comments.filter(c => lookup.has(c.taskId)) : res.comments
+    commentResults.value = comments.slice(0, 8).map(c => ({ comment: c, task: lookup.get(c.taskId) }))
+  } catch {
+    commentResults.value = []
+  }
+
+  try {
     peopleResults.value = await listUsers({ q, limit: 6 })
   } catch {
     peopleResults.value = []
+  }
+
+  try {
+    const lookup = await loadTaskLookup(pid)
+    const res = await findTimeEntries({ descriptionSearch: q, limit: pid ? 50 : 8 })
+    const entries = pid ? res.entries.filter(e => lookup.has(e.taskId)) : res.entries
+    logResults.value = entries.slice(0, 8).map(e => ({ entry: e, task: lookup.get(e.taskId) }))
+  } catch {
+    logResults.value = []
   }
 
   searched.value = true
@@ -120,6 +169,12 @@ function goToTask(t: TaskResponse) {
 function goToPerson(u: UserSummary) {
   close()
   router.push(`/people/${u.id}`)
+}
+
+function goToHitTask(task: TaskResponse | undefined) {
+  if (!task) return
+  close()
+  router.push(`/tasks/${task.projectId}/${task.id}`)
 }
 
 function onKeydownCapture(e: KeyboardEvent) {
@@ -171,7 +226,7 @@ onUnmounted(() => {
       </div>
 
       <p v-if="!query.trim()" class="px-3 py-8 text-center text-sm text-muted">
-        Начните вводить — поиск идёт по проектам, задачам и людям
+        Начните вводить — поиск идёт по проектам, задачам, комментариям, людям и логам времени
       </p>
 
       <template v-else>
@@ -211,14 +266,25 @@ onUnmounted(() => {
           </button>
         </div>
 
-        <div class="border-t border-default p-2 opacity-60">
-          <p class="flex items-center gap-1.5 px-1 pb-1 text-xs font-medium text-muted">
-            Комментарии
-            <UBadge label="скоро" size="xs" variant="subtle" color="neutral" />
-          </p>
-          <p class="px-1 py-1.5 text-sm text-dimmed">
-            Поиск по комментариям сразу во всех проектах пока не поддержан API
-          </p>
+        <div class="border-t border-default p-2">
+          <p class="px-1 pb-1 text-xs font-medium text-muted">Комментарии</p>
+          <USkeleton v-if="loading && !searched" class="h-8 w-full" />
+          <p v-else-if="!commentResults.length" class="px-1 py-1.5 text-sm text-dimmed">Ничего не найдено</p>
+          <div
+            v-for="hit in commentResults"
+            :key="hit.comment.id"
+            class="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm"
+            :class="hit.task ? 'cursor-pointer hover:bg-elevated/60' : 'cursor-default opacity-60'"
+            @click="goToHitTask(hit.task)"
+          >
+            <UIcon name="i-lucide-message-square" class="mt-0.5 size-4 shrink-0 text-muted" />
+            <div class="min-w-0 flex-1">
+              <p class="truncate">{{ hit.comment.content }}</p>
+              <p class="truncate text-xs text-dimmed">
+                {{ hit.task ? `${hit.task.title} · #${hit.task.id} · ${projectName(hit.task.projectId)}` : `Задача #${hit.comment.taskId}` }}
+              </p>
+            </div>
+          </div>
         </div>
 
         <div class="border-t border-default p-2">
@@ -237,14 +303,28 @@ onUnmounted(() => {
           </button>
         </div>
 
-        <div class="border-t border-default p-2 opacity-60">
-          <p class="flex items-center gap-1.5 px-1 pb-1 text-xs font-medium text-muted">
-            Логи времени
-            <UBadge label="скоро" size="xs" variant="subtle" color="neutral" />
-          </p>
-          <p class="px-1 py-1.5 text-sm text-dimmed">
-            Поиск по комментариям учёта времени сразу во всех проектах пока не поддержан API
-          </p>
+        <div class="border-t border-default p-2">
+          <p class="px-1 pb-1 text-xs font-medium text-muted">Логи времени</p>
+          <USkeleton v-if="loading && !searched" class="h-8 w-full" />
+          <p v-else-if="!logResults.length" class="px-1 py-1.5 text-sm text-dimmed">Ничего не найдено</p>
+          <div
+            v-for="hit in logResults"
+            :key="hit.entry.id"
+            class="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm"
+            :class="hit.task ? 'cursor-pointer hover:bg-elevated/60' : 'cursor-default opacity-60'"
+            @click="goToHitTask(hit.task)"
+          >
+            <UIcon name="i-lucide-clock" class="mt-0.5 size-4 shrink-0 text-muted" />
+            <div class="min-w-0 flex-1">
+              <p class="truncate">
+                <span class="font-mono">{{ formatDuration(hit.entry.seconds) }}</span>
+                <span v-if="hit.entry.description"> — {{ hit.entry.description }}</span>
+              </p>
+              <p class="truncate text-xs text-dimmed">
+                {{ hit.task ? `${hit.task.title} · #${hit.task.id} · ${projectName(hit.task.projectId)}` : `Задача #${hit.entry.taskId}` }}
+              </p>
+            </div>
+          </div>
         </div>
       </template>
     </div>

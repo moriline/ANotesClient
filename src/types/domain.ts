@@ -303,6 +303,22 @@ export interface CommentResponse {
   updatedAt: string | null
 }
 
+// POST /api/comments/find — без taskId ищет по всем задачам доступных
+// проектов сразу (нет параметра projectId — только taskId или ничего).
+export interface CommentSearchRequest {
+  taskId?: number
+  contentSearch?: string
+  limit?: number
+  offset?: number
+}
+
+export interface CommentSearchResponse {
+  comments: CommentResponse[]
+  total: number
+  limit: number
+  offset: number
+}
+
 export interface DiscussionBlockRequest {
   id?: string
   parentId?: string | null
@@ -379,6 +395,22 @@ export interface TimeEntryRequest {
   seconds: number
   description?: string
   startTime?: number
+}
+
+// POST /api/time-entries/find — без taskId ищет по всем задачам доступных
+// проектов сразу (нет параметра projectId — только taskId или ничего).
+export interface TimeEntrySearchRequest {
+  taskId?: number
+  descriptionSearch?: string
+  limit?: number
+  offset?: number
+}
+
+export interface TimeEntrySearchResponse {
+  entries: TimeEntry[]
+  total: number
+  limit: number
+  offset: number
 }
 
 export interface ProjectTimeLine {

@@ -184,6 +184,22 @@ export function listComments(ctx: Ctx) {
   return db.comments.filter(c => c.taskId === taskId).sort((a, b) => a.createdAt - b.createdAt).map(toCommentResponse)
 }
 
+// POST /api/comments/find — без taskId по всем задачам сразу (openapi5.yaml).
+export function findComments(ctx: Ctx) {
+  const q = ctx.body ?? {}
+  let list = db.comments.slice()
+  if (q.taskId != null) list = list.filter(c => c.taskId === q.taskId)
+  if (q.contentSearch) {
+    const needle = String(q.contentSearch).toLowerCase()
+    list = list.filter(c => c.content.toLowerCase().includes(needle))
+  }
+  list.sort((a, b) => b.createdAt - a.createdAt)
+  const total = list.length
+  const limit = q.limit ?? 50
+  const offset = q.offset ?? 0
+  return { comments: list.slice(offset, offset + limit).map(toCommentResponse), total, limit, offset }
+}
+
 export function createComment(ctx: Ctx) {
   const taskId = Number(ctx.params.taskId)
   const body = ctx.body ?? {}
@@ -253,6 +269,22 @@ function toTimeEntry(e: (typeof db.timeEntries)[number]) {
 export function listTimeEntries(ctx: Ctx) {
   const taskId = Number(ctx.params.taskId)
   return db.timeEntries.filter(e => e.taskId === taskId).sort((a, b) => b.createdAt - a.createdAt).map(toTimeEntry)
+}
+
+// POST /api/time-entries/find — без taskId по всем задачам сразу (openapi5.yaml).
+export function findTimeEntries(ctx: Ctx) {
+  const q = ctx.body ?? {}
+  let list = db.timeEntries.slice()
+  if (q.taskId != null) list = list.filter(e => e.taskId === q.taskId)
+  if (q.descriptionSearch) {
+    const needle = String(q.descriptionSearch).toLowerCase()
+    list = list.filter(e => (e.description ?? '').toLowerCase().includes(needle))
+  }
+  list.sort((a, b) => (b.startTime ?? b.createdAt) - (a.startTime ?? a.createdAt))
+  const total = list.length
+  const limit = q.limit ?? 50
+  const offset = q.offset ?? 0
+  return { entries: list.slice(offset, offset + limit).map(toTimeEntry), total, limit, offset }
 }
 
 export function createTimeEntry(ctx: Ctx) {
