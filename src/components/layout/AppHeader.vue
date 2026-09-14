@@ -8,6 +8,7 @@ import CommandPalette from '@/components/common/CommandPalette.vue'
 import TaskFormModal from '@/components/task/TaskFormModal.vue'
 import NotificationBell from '@/components/layout/NotificationBell.vue'
 import WorkTimerBar from '@/components/layout/WorkTimerBar.vue'
+import SmartSearch from '@/components/layout/SmartSearch.vue'
 
 useShortcuts()
 
@@ -57,19 +58,7 @@ const profileMenuItems = computed(() => [
       <UNavigationMenu :items="navItems" orientation="horizontal" class="hidden lg:flex" />
 
       <div class="ml-auto flex items-center gap-3">
-        <UInput
-          icon="i-lucide-search"
-          placeholder="Поиск задач"
-          class="hidden w-[220px] sm:block"
-          :model-value="''"
-          readonly
-          @focus="commandPaletteOpen = true"
-          @click="commandPaletteOpen = true"
-        >
-          <template #trailing>
-            <UKbd>⌘K</UKbd>
-          </template>
-        </UInput>
+        <SmartSearch />
         <UButton
           icon="i-lucide-search"
           variant="outline"

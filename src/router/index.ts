@@ -129,6 +129,15 @@ export const router = createRouter({
       component: () => import('@/views/PeopleListView.vue')
     },
     {
+      // Личная доска другого пользователя (todo.txt п.2) — как /dashboard, но
+      // по чужому userId. Полную доску видит только admin/Manager общего
+      // проекта (useUserBoardAccess.ts), остальным — только имя и аватар.
+      path: '/people/:userId',
+      name: 'person-board',
+      component: () => import('@/views/PersonBoardView.vue'),
+      props: true
+    },
+    {
       path: '/profile',
       name: 'profile',
       component: () => import('@/views/ProfileView.vue')

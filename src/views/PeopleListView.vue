@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import DataTableShell from '@/components/common/DataTableShell.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -16,8 +17,12 @@ const dictionaries = useDictionariesStore()
 const toast = useToast()
 const { confirm } = useConfirm()
 
+const route = useRoute()
 const loading = ref(true)
-const search = ref('')
+// Из умного поиска в шапке (AppHeader/SmartSearch) может прилететь ?q= —
+// подхватываем как стартовый текст фильтра (действует только для каталога
+// не-админа: у админской таблицы своего поиска нет).
+const search = ref(typeof route.query.q === 'string' ? route.query.q : '')
 const users = ref<UserSummary[]>([])
 const adminUsers = ref<AdminUserResponse[]>([])
 // Признак админа для этого экрана — ответ самого /api/admin/users: 200 → админ,
@@ -120,13 +125,13 @@ async function removeUser(user: AdminUserResponse) {
         <tbody>
           <tr v-for="user in adminUsers" :key="user.id" class="border-t border-default">
             <td class="px-4 py-3">
-              <div class="flex items-center gap-2">
+              <RouterLink :to="`/people/${user.id}`" class="flex items-center gap-2 hover:underline">
                 <UAvatar :src="user.avatarUrl || undefined" :text="initials(user.displayName || user.username)" size="sm" />
                 <div class="min-w-0">
                   <p class="truncate text-sm">{{ user.displayName || user.username }}</p>
                   <p class="truncate text-xs text-muted">{{ user.email }}</p>
                 </div>
-              </div>
+              </RouterLink>
             </td>
             <td class="px-2 py-3">
               <UBadge v-if="user.isAdmin" variant="subtle" color="secondary">Админ</UBadge>
@@ -165,13 +170,13 @@ async function removeUser(user: AdminUserResponse) {
         <tbody>
           <tr v-for="user in users" :key="user.id" class="border-t border-default">
             <td class="px-4 py-3">
-              <div class="flex items-center gap-2">
+              <RouterLink :to="`/people/${user.id}`" class="flex items-center gap-2 hover:underline">
                 <UAvatar :src="user.avatarUrl || undefined" :text="initials(user.displayName || user.username)" size="sm" />
                 <div class="min-w-0">
                   <p class="truncate text-sm">{{ user.displayName || user.username }}</p>
                   <p class="truncate text-xs text-muted">@{{ user.username }}</p>
                 </div>
-              </div>
+              </RouterLink>
             </td>
           </tr>
         </tbody>
