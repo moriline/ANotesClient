@@ -881,7 +881,6 @@ function humanizeAction(type: string): string {
             :tags="task.tags"
             :max="20"
             class="mt-2"
-            @select="(tag) => router.push({ path: '/tasks', query: { tag } })"
           />
 
           <div class="mt-6">

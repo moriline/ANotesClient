@@ -660,6 +660,10 @@ async function bulkAssign() {
 
 const openCount = computed(() => total.value)
 
+// Крупный текст для подсказок над полем поиска и фильтрами (по умолчанию
+// у UTooltip он мелкий, text-xs) — так просил пользователь.
+const tooltipUi = { text: 'text-xl' }
+
 function selectViewMode(v: typeof viewMode.value) {
   viewMode.value = v
   userChangedMode.value = true
@@ -708,8 +712,12 @@ function selectViewMode(v: typeof viewMode.value) {
       </template>
 
       <div v-if="selectedIds.size === 0" class="flex flex-wrap items-center gap-2">
-        <UInput v-model="search" icon="i-lucide-search" placeholder="Поиск строки или #номер" class="w-[240px]" />
-        <USelectMenu v-model="projectId" :items="projectItems" value-key="value" icon="i-lucide-folder" placeholder="Проект" class="w-[170px]" />
+        <UTooltip text="Поиск" :ui="tooltipUi">
+          <UInput v-model="search" icon="i-lucide-search" placeholder="Поиск строки или #номер" class="w-[240px]" />
+        </UTooltip>
+        <UTooltip text="Проект" :ui="tooltipUi">
+          <USelectMenu v-model="projectId" :items="projectItems" value-key="value" icon="i-lucide-folder" placeholder="Проект" class="w-[170px]" />
+        </UTooltip>
         <UTooltip :text="projectId ? 'База знаний проекта' : 'Сначала выберите проект'">
           <UButton
             :to="projectId ? `/projects/${projectId}/wiki` : undefined"
@@ -720,43 +728,52 @@ function selectViewMode(v: typeof viewMode.value) {
             aria-label="База знаний"
           />
         </UTooltip>
-        <USelectMenu
-          v-model="statusId"
-          :items="statusItems"
-          value-key="value"
-          :disabled="!projectId || viewMode === 'board'"
-          icon="i-lucide-circle-dot"
-          placeholder="Статус"
-          class="w-[150px]"
-        />
-        <USelectMenu
-          v-model="milestoneFilter"
-          :items="milestoneFilterItems"
-          value-key="value"
-          :disabled="!projectId"
-          icon="i-lucide-diamond"
-          placeholder="Веха"
-          class="w-[150px]"
-        />
-        <USelectMenu v-model="assignedUserId" :items="userItems" value-key="value" :disabled="assignedToMe" icon="i-lucide-user" placeholder="Исполнитель" class="w-[170px]" />
-        <USelectMenu
-          v-model="taskType"
-          :items="typeItems"
-          value-key="value"
-          :disabled="viewMode !== 'list'"
-          icon="i-lucide-shapes"
-          placeholder="Тип"
-          class="w-[140px]"
-        />
-        <USelectMenu
-          v-if="allTags.length"
-          v-model="selectedTags"
-          :items="allTags"
-          multiple
-          icon="i-lucide-tag"
-          placeholder="Теги"
-          class="w-[170px]"
-        />
+        <UTooltip text="Статус" :ui="tooltipUi">
+          <USelectMenu
+            v-model="statusId"
+            :items="statusItems"
+            value-key="value"
+            :disabled="!projectId || viewMode === 'board'"
+            icon="i-lucide-circle-dot"
+            placeholder="Статус"
+            class="w-[150px]"
+          />
+        </UTooltip>
+        <UTooltip text="Веха" :ui="tooltipUi">
+          <USelectMenu
+            v-model="milestoneFilter"
+            :items="milestoneFilterItems"
+            value-key="value"
+            :disabled="!projectId"
+            icon="i-lucide-diamond"
+            placeholder="Веха"
+            class="w-[150px]"
+          />
+        </UTooltip>
+        <UTooltip text="Исполнитель" :ui="tooltipUi">
+          <USelectMenu v-model="assignedUserId" :items="userItems" value-key="value" :disabled="assignedToMe" icon="i-lucide-user" placeholder="Исполнитель" class="w-[170px]" />
+        </UTooltip>
+        <UTooltip text="Тип" :ui="tooltipUi">
+          <USelectMenu
+            v-model="taskType"
+            :items="typeItems"
+            value-key="value"
+            :disabled="viewMode !== 'list'"
+            icon="i-lucide-shapes"
+            placeholder="Тип"
+            class="w-[140px]"
+          />
+        </UTooltip>
+        <UTooltip v-if="allTags.length" text="Теги" :ui="tooltipUi">
+          <USelectMenu
+            v-model="selectedTags"
+            :items="allTags"
+            multiple
+            icon="i-lucide-tag"
+            placeholder="Теги"
+            class="w-[170px]"
+          />
+        </UTooltip>
         <UButton
           icon="i-lucide-user-check"
           :variant="assignedToMe ? 'solid' : 'outline'"
