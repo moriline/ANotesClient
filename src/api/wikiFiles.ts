@@ -18,6 +18,10 @@ export function deleteWikiFile(id: number, force = false) {
   return http.delete<void>(`/wiki/files/${id}${force ? '?force=true' : ''}`)
 }
 
+// Префикс путей отдачи файлов вики — им помечены <img src> для
+// useAuthorizedImages (WikiMarkdown.vue).
+export const WIKI_FILE_PREFIX = '/api/wiki/files/'
+
 /**
  * GET /api/wiki/files/{storedName} требует Authorization — обычный <img src>
  * его не пришлёт (см. openapi5.yaml: у ручки bearerAuth, как у скачивания

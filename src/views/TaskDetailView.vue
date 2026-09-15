@@ -24,7 +24,7 @@ import { setTaskMilestone } from '@/api/milestones'
 import { isEpic as isEpicTask } from '@/utils/taskType'
 import { listTaskComments, createComment, updateComment, deleteComment } from '@/api/comments'
 import { listTaskActivity } from '@/api/activity'
-import { listTaskFiles, uploadTaskFile, deleteFile, downloadFile, fetchFileObjectUrl, fetchFileText } from '@/api/files'
+import { listTaskFiles, uploadTaskFile, deleteFile, downloadFile, fetchFileObjectUrl, fetchFileText, taskFileReferenceMarkdown } from '@/api/files'
 import { getTaskSummary, updateTaskSummary } from '@/api/taskSummary'
 import { getTaskTotalSeconds, listTimeEntries, logTime, deleteTimeEntry } from '@/api/timeEntries'
 import { getTaskWikiPages } from '@/api/wiki'
@@ -707,6 +707,20 @@ async function onFileSelected(e: Event) {
   }
 }
 
+// Кнопка «Скопировать ссылку» у файла — готовый markdown для вставки в
+// Описание/Резюме (та же схема ссылок, что и в вики: обычная markdown-ссылка/
+// картинка на ручку отдачи файла, MarkdownView.vue умеет её отрисовать и
+// авторизованно скачать по клику).
+async function copyFileReference(file: FileResponse) {
+  const markdown = taskFileReferenceMarkdown(file, isImage(file))
+  try {
+    await navigator.clipboard.writeText(markdown)
+    toast.add({ title: 'Ссылка скопирована', description: 'Вставьте её в описание или резюме задачи', color: 'primary' })
+  } catch {
+    toast.add({ title: 'Не удалось скопировать ссылку', color: 'error' })
+  }
+}
+
 async function removeFile(file: FileResponse) {
   const ok = await confirm({ title: `Удалить файл «${file.fileOriginalName}»?` })
   if (!ok) return
@@ -923,6 +937,10 @@ function humanizeAction(type: string): string {
               />
             </p>
             <UTextarea v-model="summaryText" :rows="3" class="w-full" placeholder="Краткое резюме задачи" />
+            <div v-if="summaryText.trim()" class="mt-2 rounded-md border border-default bg-elevated/30 px-3 py-2">
+              <p class="mb-1 text-[11px] uppercase tracking-wide text-dimmed">Предпросмотр</p>
+              <MarkdownView :source="summaryText" :mentions="mentionUsers" />
+            </div>
             <div class="mt-2 flex items-center justify-between">
               <RelativeTime v-if="summaryUpdatedAt" :value="summaryUpdatedAt" class="text-xs text-muted" />
               <span v-else />
@@ -961,6 +979,14 @@ function humanizeAction(type: string): string {
                     title="Просмотр"
                     :loading="previewLoadingId === file.id"
                     @click="openTextPreview(file)"
+                  />
+                  <UButton
+                    icon="i-lucide-link"
+                    variant="outline"
+                    color="primary"
+                    size="xs"
+                    title="Скопировать ссылку для описания/резюме"
+                    @click="copyFileReference(file)"
                   />
                   <UButton icon="i-lucide-download" variant="outline" color="primary" size="xs" @click="download(file)" />
                   <UButton icon="i-lucide-x" variant="ghost" color="neutral" size="xs" @click="removeFile(file)" />

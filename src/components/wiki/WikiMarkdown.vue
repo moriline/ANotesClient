@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { Marked, type TokenizerAndRendererExtension } from 'marked'
 import DOMPurify from 'dompurify'
 import { findTasks } from '@/api/tasks'
+import { fetchWikiFileBlob, WIKI_FILE_PREFIX } from '@/api/wikiFiles'
 import { useAuthorizedImages } from '@/composables/useAuthorizedImages'
 
 // Рендер markdown вики-страницы с разбором связей прямо в тексте:
@@ -124,7 +125,7 @@ const html = computed(() => {
 // Markdown). Ручка отдачи требует Authorization — <img> его не пришлёт, поэтому
 // после каждой перерисовки донагружаем такие картинки авторизованным fetch.
 const rootEl = ref<HTMLElement>()
-const { resolveAll } = useAuthorizedImages(rootEl)
+const { resolveAll } = useAuthorizedImages(rootEl, WIKI_FILE_PREFIX, fetchWikiFileBlob)
 watch(html, () => { nextTick(resolveAll) }, { immediate: true })
 
 function onClick(e: MouseEvent) {
@@ -231,16 +232,6 @@ function onClick(e: MouseEvent) {
   margin: 1.5em 0;
 }
 .wiki-markdown :deep(img) { border-radius: 0.375rem; max-width: 100%; }
-.wiki-markdown :deep(.wiki-broken-image) {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4em;
-  padding: 0.3em 0.6em;
-  border: 1px dashed var(--ui-border-accented);
-  border-radius: 0.375rem;
-  color: var(--ui-text-muted);
-  font-size: 0.85em;
-}
 .wiki-markdown :deep(a) {
   color: var(--ui-primary);
   text-decoration: underline;

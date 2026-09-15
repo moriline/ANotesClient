@@ -144,7 +144,7 @@ function draftTime(ts: number): string {
       v-if="multiline && mentionMembers"
       v-model="draft"
       :members="mentionMembers"
-      :rows="4"
+      :rows="8"
       autofocus
     />
     <UTextarea v-else-if="multiline" v-model="draft" autofocus :rows="4" class="w-full" />
