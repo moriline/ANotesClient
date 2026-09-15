@@ -17,19 +17,40 @@ export function userTimeReport(ctx: Ctx) {
   const user = db.users.find(u => u.id === userId)
   const entries = db.timeEntries.filter(e => e.userId === userId && e.createdAt >= from && e.createdAt <= to)
 
-  const byProjectMap = new Map<number, { seconds: number; count: number }>()
+  // byProject → entries[] по задаче (TaskTimeLine), не агрегат по проекту
+  // целиком — так теперь отдаёт и боевой бэкенд (reports.md #1), чтобы клиент
+  // мог показать конкретные задачи со ссылками, а не только проект.
+  const byProjectMap = new Map<number, Map<number, { seconds: number; count: number }>>()
   for (const e of entries) {
     const task = db.tasks.find(t => t.id === e.taskId)
     if (!task) continue
-    const acc = byProjectMap.get(task.projectId) ?? { seconds: 0, count: 0 }
+    let byTask = byProjectMap.get(task.projectId)
+    if (!byTask) { byTask = new Map(); byProjectMap.set(task.projectId, byTask) }
+    const acc = byTask.get(task.id) ?? { seconds: 0, count: 0 }
     acc.seconds += e.seconds
     acc.count += 1
-    byProjectMap.set(task.projectId, acc)
+    byTask.set(task.id, acc)
   }
-  const byProject = [...byProjectMap.entries()].map(([projectId, acc]) => ({
-    projectId, projectName: db.projects.find(p => p.id === projectId)?.name ?? '?',
-    totalSeconds: acc.seconds, totalHours: Math.round((acc.seconds / 3600) * 100) / 100, entryCount: acc.count
-  }))
+  const byProject = [...byProjectMap.entries()]
+    .map(([projectId, byTask]) => {
+      const taskEntries = [...byTask.entries()]
+        .map(([taskId, acc]) => ({
+          taskId,
+          taskTitle: db.tasks.find(t => t.id === taskId)?.title ?? '?',
+          totalSeconds: acc.seconds,
+          totalHours: Math.round((acc.seconds / 3600) * 100) / 100,
+          entryCount: acc.count
+        }))
+        .sort((a, b) => b.totalSeconds - a.totalSeconds)
+      return {
+        projectId,
+        projectName: db.projects.find(p => p.id === projectId)?.name ?? '?',
+        entries: taskEntries
+      }
+    })
+    .sort((a, b) =>
+      b.entries.reduce((s, e) => s + e.totalSeconds, 0) - a.entries.reduce((s, e) => s + e.totalSeconds, 0)
+    )
 
   const totalSeconds = entries.reduce((s, e) => s + e.seconds, 0)
   return {

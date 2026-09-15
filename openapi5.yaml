@@ -3079,7 +3079,7 @@ components:
           type: boolean
         isHidden:
           type: boolean
-    ProjectTimeLine:
+    ProjectTimeEntries:
       type: object
       properties:
         projectId:
@@ -3087,15 +3087,10 @@ components:
           type: integer
         projectName:
           type: string
-        totalSeconds:
-          format: int64
-          type: integer
-        totalHours:
-          format: double
-          type: number
-        entryCount:
-          format: int32
-          type: integer
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskTimeLine"
     ProjectTimeReportResponse:
       type: object
       properties:
@@ -3383,6 +3378,23 @@ components:
           type: string
         updatedAt:
           $ref: "#/components/schemas/Instant"
+    TaskTimeLine:
+      type: object
+      properties:
+        taskId:
+          format: int32
+          type: integer
+        taskTitle:
+          type: string
+        totalSeconds:
+          format: int64
+          type: integer
+        totalHours:
+          format: double
+          type: number
+        entryCount:
+          format: int32
+          type: integer
     TaskType:
       enum:
       - TASK
@@ -3514,7 +3526,7 @@ components:
         byProject:
           type: array
           items:
-            $ref: "#/components/schemas/ProjectTimeLine"
+            $ref: "#/components/schemas/ProjectTimeEntries"
     UUID:
       format: uuid
       pattern: "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"

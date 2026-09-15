@@ -413,12 +413,23 @@ export interface TimeEntrySearchResponse {
   offset: number
 }
 
-export interface ProjectTimeLine {
-  projectId: number
-  projectName: string
+// Агрегат по одной задаче внутри группы byProject (reports.md #1) — суммарное
+// время нескольких списаний, поэтому description тут нет, только itog.
+// taskId+taskTitle нарочно на каждой строке: клиент строит ссылку
+// /tasks/{projectId}/{taskId} сам (projectId уже есть на уровне группы), не
+// делая для этого второй запрос.
+export interface TaskTimeLine {
+  taskId: number
+  taskTitle: string
   totalSeconds: number
   totalHours: number
   entryCount: number
+}
+
+export interface ProjectTimeEntries {
+  projectId: number
+  projectName: string
+  entries: TaskTimeLine[]
 }
 
 export interface TimeReportResponse {
@@ -431,7 +442,9 @@ export interface TimeReportResponse {
   totalSeconds: number
   totalHours: number
   entryCount: number
-  byProject: ProjectTimeLine[]
+  // Только непустые проекты, по убыванию суммарного времени; entries внутри —
+  // тоже по убыванию времени (reports.md #1).
+  byProject: ProjectTimeEntries[]
 }
 
 export interface UserTimeLine {

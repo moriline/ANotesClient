@@ -3,20 +3,15 @@ import { computed } from 'vue'
 import { formatDuration } from '@/utils/format'
 import type { BreakdownRow } from './breakdown'
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   totalSeconds: number
   totalHours?: number
   entryCount: number
   periodLabel?: string
   rows: BreakdownRow[]
   rowHeader: string
-  selectable?: boolean
   emptyText: string
-}>(), {
-  selectable: false
-})
-
-const emit = defineEmits<{ select: [key: number] }>()
+}>()
 
 const maxSeconds = computed(() => props.rows.reduce((m, r) => Math.max(m, r.totalSeconds), 0))
 const hoursLabel = computed(() => props.totalHours ?? Math.round((props.totalSeconds / 3600) * 100) / 100)
@@ -70,8 +65,6 @@ function sharePercent(seconds: number): number {
               v-for="row in rows"
               :key="row.key"
               class="border-t border-default"
-              :class="selectable ? 'cursor-pointer hover:bg-elevated/40' : ''"
-              @click="selectable && emit('select', row.key)"
             >
               <td class="px-4 py-2.5">
                 <p class="font-medium text-highlighted">{{ row.label }}</p>

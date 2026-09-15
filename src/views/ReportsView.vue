@@ -6,6 +6,7 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import HelpLink from '@/components/common/HelpLink.vue'
 import PeriodControls from '@/components/reports/PeriodControls.vue'
 import TimeReportBreakdown from '@/components/reports/TimeReportBreakdown.vue'
+import UserTimeReportBreakdown from '@/components/reports/UserTimeReportBreakdown.vue'
 import type { BreakdownRow } from '@/components/reports/breakdown'
 import { useAuthStore } from '@/stores/auth'
 import { useDictionariesStore } from '@/stores/dictionaries'
@@ -78,15 +79,6 @@ function userName(id: number): string {
   const u = dictionaries.userById.get(id)
   return u?.displayName || u?.username || `Пользователь #${id}`
 }
-
-const userRows = computed<BreakdownRow[]>(() =>
-  (userReport.value?.byProject ?? []).map(p => ({
-    key: p.projectId,
-    label: p.projectName || `Проект #${p.projectId}`,
-    totalSeconds: p.totalSeconds,
-    entryCount: p.entryCount
-  }))
-)
 
 const projectRows = computed<BreakdownRow[]>(() =>
   (projectReport.value?.byUser ?? []).map(u => ({
@@ -264,10 +256,6 @@ async function refreshTaskSide() {
   await loadTaskReport()
 }
 
-function goToProjectTasks(id: number) {
-  router.push({ path: '/tasks', query: { project: id } })
-}
-
 // CSV — единственный формат экспорта без новой зависимости (XLSX/PDF её
 // требуют); только «По пользователю»/«По проекту», как и просили. «По задаче»
 // не трогаем — там и так виден полный список списаний на странице.
@@ -284,9 +272,13 @@ function exportCsv() {
     const who = userName(userReport.value.userId)
     rows.push(toCsvRow([`Отчёт по пользователю: ${who}`, periodLabel.value]))
     rows.push('')
-    rows.push(toCsvRow(['Проект', 'Время', 'Секунды', 'Записей']))
-    for (const r of userRows.value) rows.push(toCsvRow([r.label, formatDuration(r.totalSeconds), r.totalSeconds, r.entryCount]))
-    rows.push(toCsvRow(['Итого', formatDuration(userReport.value.totalSeconds), userReport.value.totalSeconds, userReport.value.entryCount]))
+    rows.push(toCsvRow(['Проект', 'Задача', 'Время', 'Секунды', 'Записей']))
+    for (const g of userReport.value.byProject) {
+      for (const t of g.entries) {
+        rows.push(toCsvRow([g.projectName, `#${t.taskId} ${t.taskTitle}`, formatDuration(t.totalSeconds), t.totalSeconds, t.entryCount]))
+      }
+    }
+    rows.push(toCsvRow(['Итого', '', formatDuration(userReport.value.totalSeconds), userReport.value.totalSeconds, userReport.value.entryCount]))
     downloadCsv(`отчёт-по-пользователю-${who}-${periodLabel.value}.csv`, rows)
   } else if (tab.value === 'project' && projectReport.value) {
     const projName = projectReport.value.projectName || `Проект #${projectReport.value.projectId}`
@@ -375,17 +367,14 @@ onMounted(async () => {
       </div>
 
       <template v-else-if="tab === 'user'">
-        <TimeReportBreakdown
+        <UserTimeReportBreakdown
           v-if="userReport"
           :total-seconds="userReport.totalSeconds"
           :total-hours="userReport.totalHours"
           :entry-count="userReport.entryCount"
           :period-label="periodLabel"
-          :rows="userRows"
-          row-header="Проект"
-          selectable
+          :groups="userReport.byProject"
           empty-text="За выбранный период списаний времени нет."
-          @select="goToProjectTasks"
         />
       </template>
 

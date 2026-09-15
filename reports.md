@@ -26,15 +26,36 @@
   "totalSeconds": 12600, "totalHours": 3.5, "entryCount": 4,
   "byProject": [
     { "projectId": 1, "projectName": "Web Site Redesign",
-      "totalSeconds": 9000, "totalHours": 2.5, "entryCount": 3 },
+      "entries": [
+        { "taskId": 42, "taskTitle": "Fix login bug",
+          "totalSeconds": 7200, "totalHours": 2.0, "entryCount": 2 },
+        { "taskId": 55, "taskTitle": "Code review",
+          "totalSeconds": 1800, "totalHours": 0.5, "entryCount": 1 }
+      ] },
     { "projectId": 2, "projectName": "Mobile App API",
-      "totalSeconds": 3600, "totalHours": 1.0, "entryCount": 1 }
+      "entries": [
+        { "taskId": 17, "taskTitle": "Write API docs",
+          "totalSeconds": 3600, "totalHours": 1.0, "entryCount": 1 }
+      ] }
   ]
 }
 ```
 
-- `byProject` — разбивка по проектам, по убыванию времени.
-- Считается одним native SQL: `timeEntries → tasks → projects`, `GROUP BY projectId`.
+- `byProject` — только непустые проекты (без списаний за период проект не
+  попадает в ответ), по убыванию суммарного времени внутри.
+- Внутри каждого проекта — `entries`: агрегат по задаче (`TaskTimeLine`:
+  `taskId, taskTitle, totalSeconds, totalHours, entryCount`; `description`
+  тут нет — это сумма нескольких списаний, а не одна запись), по убыванию
+  времени. `taskId` в каждой строке — специально, чтобы клиент сам собрал
+  ссылку `/projects/{projectId}/tasks/{taskId}` (`projectId` уже есть на
+  уровне группы) и увидел часы, не делая для этого второй запрос.
+- Один native SQL на весь `byProject`: `timeEntries → tasks → projects`,
+  `GROUP BY projectId, taskId`; группировка по проекту — уже на стороне
+  приложения (Java) поверх этой единственной выборки, поэтому запрос всего
+  один, а не два, как было бы при отдельном агрегате по проектам и отдельном
+  по задачам.
+- `totalSeconds`/`totalHours`/`entryCount` верхнего уровня — сумма по всем
+  строкам всех групп, без искусственной обрезки.
 - Часы округляются до 2 знаков.
 
 ### Кто чей отчёт видит (`TimeReportResource.resolveScope`)
