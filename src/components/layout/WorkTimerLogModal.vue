@@ -26,7 +26,7 @@ watch(() => timer.logModalOpen, (open) => {
   hours.value = Math.floor(total / 3600)
   minutes.value = Math.round((total % 3600) / 60)
   description.value = ''
-})
+}, { immediate: true })
 
 async function submit() {
   if (!timer.active) return
@@ -72,7 +72,7 @@ function discard() {
           variant="subtle"
           icon="i-lucide-alarm-clock"
           title="Похоже, вы забыли его остановить"
-          :description="`Таймер шёл ${formatDuration(timer.forgottenElapsedSeconds)} — вряд ли это реально отработанное время. Ниже подставлено 8 часов, поправьте вручную или сбросьте, если это ошибка.`"
+          :description="`Таймер шёл ${formatDuration(timer.forgottenElapsedSeconds)} — вряд ли это реально отработанное время. Ниже подставлено ${formatDuration(FORGOTTEN_AFTER_SECONDS)}, поправьте вручную или сбросьте, если это ошибка.`"
         />
         <p v-if="timer.pendingStart" class="text-xs text-muted">
           Чтобы запустить таймер по «{{ timer.pendingStart.title }}», сначала запишите или сбросьте это время.
