@@ -93,7 +93,6 @@ const previewLoadingId = ref<number | null>(null)
 
 const summaryText = ref('')
 const summaryUpdatedAt = ref<string | null>(null)
-const savingSummary = ref(false)
 
 function todayInput(): string {
   return new Date().toISOString().slice(0, 10)
@@ -738,16 +737,17 @@ function download(file: FileResponse) {
   })
 }
 
-async function saveSummary() {
-  savingSummary.value = true
+async function saveSummary(value: string) {
+  if (value === summaryText.value) return
+  const before = summaryText.value
+  summaryText.value = value
   try {
-    const res = await updateTaskSummary(taskIdNum.value, { summary: summaryText.value })
+    const res = await updateTaskSummary(taskIdNum.value, { summary: value })
     summaryUpdatedAt.value = res.updatedAt
     toast.add({ title: 'Резюме сохранено', color: 'primary' })
   } catch (e) {
+    summaryText.value = before
     toast.add({ title: 'Не удалось сохранить резюме', description: e instanceof ApiError ? e.message : undefined, color: 'error' })
-  } finally {
-    savingSummary.value = false
   }
 }
 
@@ -936,16 +936,20 @@ function humanizeAction(type: string): string {
                 hint="Короткое изложение задачи в 2–4 предложения: о чём она и где затык. Заполняете вы вручную или ИИ-агент по запросу. Сохранение перезаписывает текст целиком."
               />
             </p>
-            <UTextarea v-model="summaryText" :rows="3" class="w-full" placeholder="Краткое резюме задачи" />
-            <div v-if="summaryText.trim()" class="mt-2 rounded-md border border-default bg-elevated/30 px-3 py-2">
-              <p class="mb-1 text-[11px] uppercase tracking-wide text-dimmed">Предпросмотр</p>
-              <MarkdownView :source="summaryText" :mentions="mentionUsers" />
-            </div>
-            <div class="mt-2 flex items-center justify-between">
-              <RelativeTime v-if="summaryUpdatedAt" :value="summaryUpdatedAt" class="text-xs text-muted" />
-              <span v-else />
-              <UButton size="xs" color="primary" :loading="savingSummary" @click="saveSummary">Сохранить</UButton>
-            </div>
+            <InlineEdit
+              :key="`summary-${task.id}`"
+              :model-value="summaryText"
+              multiline
+              placeholder="Краткое резюме задачи"
+              confirm-label="Сохранить"
+              @save="saveSummary"
+            >
+              <template #default="{ value }">
+                <MarkdownView v-if="value" :source="value" :mentions="mentionUsers" />
+                <span v-else class="italic text-muted">Без резюме</span>
+              </template>
+            </InlineEdit>
+            <RelativeTime v-if="summaryUpdatedAt" :value="summaryUpdatedAt" class="mt-2 block text-xs text-muted" />
           </div>
 
           <div class="mt-8 border-t border-default pt-6">
