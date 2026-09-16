@@ -15,7 +15,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDictionariesStore } from '@/stores/dictionaries'
-import { findTasks } from '@/api/tasks'
+import { findTasks, getTask } from '@/api/tasks'
 import { findComments } from '@/api/comments'
 import { findTimeEntries } from '@/api/timeEntries'
 import { listUsers } from '@/api/users'
@@ -87,6 +87,24 @@ function loadTaskLookup(pid?: number): Promise<Map<number, TaskResponse>> {
   return promise
 }
 
+// Поиск по номеру задачи ("42" / "#42") — у POST /api/find нет фильтра по
+// id (FindTasksRequest), поэтому текстовый titleSearch/contentSearch номер
+// не находит. С выбранным проектом бьём точно через нативный
+// GET /api/projects/{pid}/tasks/{taskId} (быстро и надёжно, включая старые
+// задачи); без фильтра проекта резолвим по тому же кэшу последних 200
+// задач, что и остальной попап, — с тем же допущением о неполном покрытии.
+async function resolveTaskById(id: number, pid?: number): Promise<TaskResponse | undefined> {
+  if (pid) {
+    try {
+      return await getTask(pid, id)
+    } catch {
+      return undefined
+    }
+  }
+  const lookup = await loadTaskLookup(undefined)
+  return lookup.get(id)
+}
+
 let debounceTimer: ReturnType<typeof setTimeout> | undefined
 watch([query, projectFilter], () => {
   clearTimeout(debounceTimer)
@@ -116,14 +134,23 @@ async function runSearch(q: string) {
   try {
     // titleSearch и contentSearch комбинируются по И на бэкенде — чтобы
     // покрыть и заголовок, и описание/резюме/обсуждение, шлём два отдельных
-    // запроса и объединяем результат на клиенте.
-    const [byTitle, byContent] = await Promise.all([
+    // запроса и объединяем результат на клиенте. "42" / "#42" дополнительно
+    // резолвится как номер задачи (resolveTaskById) и ставится первым.
+    const idMatch = q.trim().match(/^#?(\d+)$/)
+    const [byTitle, byContent, byIdTask] = await Promise.all([
       findTasks({ titleSearch: q, projectId: pid, limit: 8 }).then(r => r.tasks).catch(() => []),
-      findTasks({ contentSearch: q, projectId: pid, limit: 8 }).then(r => r.tasks).catch(() => [])
+      findTasks({ contentSearch: q, projectId: pid, limit: 8 }).then(r => r.tasks).catch(() => []),
+      idMatch ? resolveTaskById(Number(idMatch[1]), pid) : Promise.resolve(undefined)
     ])
-    const byId = new Map<number, TaskResponse>()
-    for (const t of [...byTitle, ...byContent]) byId.set(t.id, t)
-    taskResults.value = Array.from(byId.values()).slice(0, 8)
+    const seen = new Set<number>()
+    const results: TaskResponse[] = []
+    if (byIdTask) { results.push(byIdTask); seen.add(byIdTask.id) }
+    for (const t of [...byTitle, ...byContent]) {
+      if (seen.has(t.id)) continue
+      seen.add(t.id)
+      results.push(t)
+    }
+    taskResults.value = results.slice(0, 8)
   } catch {
     taskResults.value = []
   }
