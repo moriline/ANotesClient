@@ -50,8 +50,8 @@ watch(() => props.userId, init)
   <div>
     <PageHeader :title="`Доска: ${targetName}`" :subtitle="access === 'full' ? `Назначено: ${openTasks.length}` : undefined">
       <div v-if="access === 'full'" class="flex flex-wrap items-center gap-2">
-        <USelectMenu v-model="projectId" :items="projectItems" value-key="value" icon="i-lucide-folder" placeholder="Все проекты" class="w-[190px]" />
-        <USelectMenu v-model="milestoneFilter" :items="milestoneItems" value-key="value" icon="i-lucide-diamond" placeholder="Любая веха" class="w-[190px]" />
+        <USelectMenu v-model="projectId" :items="projectItems" value-key="value" icon="i-lucide-folder" placeholder="Все проекты" aria-label="Фильтр по проекту" class="w-[190px]" />
+        <USelectMenu v-model="milestoneFilter" :items="milestoneItems" value-key="value" icon="i-lucide-diamond" placeholder="Любая веха" aria-label="Фильтр по вехе" class="w-[190px]" />
       </div>
     </PageHeader>
 
