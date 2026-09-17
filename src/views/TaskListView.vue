@@ -716,7 +716,7 @@ function selectViewMode(v: typeof viewMode.value) {
           <UInput v-model="search" icon="i-lucide-search" placeholder="Поиск строки или #номер" class="w-[240px]" />
         </UTooltip>
         <UTooltip text="Проект" :ui="tooltipUi">
-          <USelectMenu v-model="projectId" :items="projectItems" value-key="value" icon="i-lucide-folder" placeholder="Проект" class="w-[170px]" />
+          <USelectMenu v-model="projectId" :items="projectItems" value-key="value" icon="i-lucide-folder" placeholder="Проект" aria-label="Фильтр по проекту" class="w-[170px]" />
         </UTooltip>
         <UTooltip :text="projectId ? 'База знаний проекта' : 'Сначала выберите проект'">
           <UButton
@@ -736,6 +736,7 @@ function selectViewMode(v: typeof viewMode.value) {
             :disabled="!projectId || viewMode === 'board'"
             icon="i-lucide-circle-dot"
             placeholder="Статус"
+            aria-label="Фильтр по статусу"
             class="w-[150px]"
           />
         </UTooltip>
@@ -747,11 +748,12 @@ function selectViewMode(v: typeof viewMode.value) {
             :disabled="!projectId"
             icon="i-lucide-diamond"
             placeholder="Веха"
+            aria-label="Фильтр по вехе"
             class="w-[150px]"
           />
         </UTooltip>
         <UTooltip text="Исполнитель" :ui="tooltipUi">
-          <USelectMenu v-model="assignedUserId" :items="userItems" value-key="value" :disabled="assignedToMe" icon="i-lucide-user" placeholder="Исполнитель" class="w-[170px]" />
+          <USelectMenu v-model="assignedUserId" :items="userItems" value-key="value" :disabled="assignedToMe" icon="i-lucide-user" placeholder="Исполнитель" aria-label="Фильтр по исполнителю" class="w-[170px]" />
         </UTooltip>
         <UTooltip text="Тип" :ui="tooltipUi">
           <USelectMenu
@@ -761,6 +763,7 @@ function selectViewMode(v: typeof viewMode.value) {
             :disabled="viewMode !== 'list'"
             icon="i-lucide-shapes"
             placeholder="Тип"
+            aria-label="Фильтр по типу"
             class="w-[140px]"
           />
         </UTooltip>
@@ -771,6 +774,7 @@ function selectViewMode(v: typeof viewMode.value) {
             multiple
             icon="i-lucide-tag"
             placeholder="Теги"
+            aria-label="Фильтр по тегам"
             class="w-[170px]"
           />
         </UTooltip>

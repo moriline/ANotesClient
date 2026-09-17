@@ -248,6 +248,7 @@ onUnmounted(() => {
           value-key="value"
           icon="i-lucide-folder"
           placeholder="Все проекты"
+          aria-label="Фильтр по проекту"
           class="w-full"
         />
       </div>
