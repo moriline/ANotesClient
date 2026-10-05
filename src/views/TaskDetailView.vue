@@ -18,19 +18,21 @@ import { useDictionariesStore } from '@/stores/dictionaries'
 import { useAuthStore } from '@/stores/auth'
 import { useWorkTimerStore } from '@/stores/workTimer'
 import { useConfirm } from '@/composables/useConfirm'
+import { usePersistentDraft } from '@/composables/usePersistentDraft'
 import { bumpTasksVersion } from '@/composables/useGlobalUi'
 import { getTask, updateTask, deleteTask, createTask, setTaskParent, convertTask } from '@/api/tasks'
 import { setTaskMilestone } from '@/api/milestones'
 import { isEpic as isEpicTask } from '@/utils/taskType'
 import { listTaskComments, createComment, updateComment, deleteComment } from '@/api/comments'
 import { listTaskActivity } from '@/api/activity'
-import { listTaskFiles, uploadTaskFile, deleteFile, downloadFile, fetchFileObjectUrl, fetchFileText, taskFileReferenceMarkdown } from '@/api/files'
+import { listTaskFiles, uploadTaskFile, deleteFile, downloadFile, fetchFileObjectUrl, fetchFileText, taskFileReferenceMarkdown, taskFileReferenceUrl } from '@/api/files'
 import { getTaskSummary, updateTaskSummary } from '@/api/taskSummary'
 import { getTaskTotalSeconds, listTimeEntries, logTime, deleteTimeEntry } from '@/api/timeEntries'
 import { getTaskWikiPages } from '@/api/wiki'
 import { ApiError } from '@/api/http'
 import { formatClock, formatDate, formatDuration, initials } from '@/utils/format'
 import { resolveMentions, type MentionUser } from '@/utils/mentions'
+import { clearTextDraft, readTextDraft, writeTextDraft } from '@/utils/drafts'
 import type { ActivityResponse, CommentResponse, FileResponse, TaskResponse, TaskUpdateRequest, TimeEntry, WikiBacklinkResponse } from '@/types/domain'
 
 const props = defineProps<{ projectId: string; taskId: string }>()
@@ -93,6 +95,9 @@ const previewLoadingId = ref<number | null>(null)
 
 const summaryText = ref('')
 const summaryUpdatedAt = ref<string | null>(null)
+// Редактор резюме монтируется только после загрузки: черновик сравнивается с
+// серверным текстом при монтировании, а до ответа там пустая строка.
+const summaryLoaded = ref(false)
 
 function todayInput(): string {
   return new Date().toISOString().slice(0, 10)
@@ -106,12 +111,19 @@ const logMinutes = ref<number | null>(0)
 const logDescription = ref('')
 const loggingTime = ref(false)
 
+// Черновики полей ввода без InlineEdit (src/utils/drafts.ts): новый
+// комментарий и комментарий к учёту времени переживают перезагрузку.
+const commentDraft = usePersistentDraft(() => `task.${props.taskId}.comment`, newComment)
+const timeLogDraft = usePersistentDraft(() => `task.${props.taskId}.timelog`, logDescription)
+
 // Модель сохранения (task_edit_2.md): пикеры — статус, исполнитель, срок, дата
 // начала, оценка, теги — пишутся на сервер СРАЗУ при выборе. Выбор в
 // USelectMenu уже принятое решение, подтверждать его кнопкой внизу экрана
 // незачем. Название и описание правятся ЯВНО (кнопка «Готово» в InlineEdit),
-// а их незакоммиченный текст переживает уход со страницы через черновик в
-// sessionStorage (draft-key у InlineEdit) — не через диалоги и beforeunload.
+// а их незакоммиченный текст (и файлы, прикреплённые к описанию) живёт в
+// черновике этого браузера (draft-key у InlineEdit, src/utils/drafts.ts) —
+// переживает перезагрузку и закрытие вкладки, виден только автору правки и
+// уходит на сервер по «Сохранить». Не через диалоги и beforeunload.
 const savingField = ref<string | null>(null)
 
 // Немедленное сохранение поля(-ей). Оптимистично, с откатом при ошибке.
@@ -123,15 +135,16 @@ const savingField = ref<string | null>(null)
 // быстрые последовательные изменения (сначала статус, потом исполнитель) не
 // ловили ложный 409 из-за гонки версий между собой.
 let saveQueue: Promise<unknown> = Promise.resolve()
-function saveField(patch: TaskUpdateRequest): Promise<void> {
+function saveField(patch: TaskUpdateRequest): Promise<boolean> {
   const run = () => doSaveField(patch)
   const next = saveQueue.then(run, run)
   saveQueue = next.catch(() => {})
   return next
 }
 
-async function doSaveField(patch: TaskUpdateRequest, force = false) {
-  if (!task.value) return
+// true — изменение на сервере (InlineEdit по false не стирает черновик).
+async function doSaveField(patch: TaskUpdateRequest, force = false): Promise<boolean> {
+  if (!task.value) return false
   const before = task.value
   task.value = { ...before, ...patch } as TaskResponse
   savingField.value = Object.keys(patch)[0] ?? null
@@ -144,32 +157,48 @@ async function doSaveField(patch: TaskUpdateRequest, force = false) {
     )
     bumpTasksVersion()
     loadActivity()
+    return true
   } catch (e) {
     task.value = before
     if (!force && e instanceof ApiError && e.status === 409) {
-      if (await askOverwriteOnConflict()) await doSaveField(patch, true)
-      else await reloadTask()
-      return
+      if (await askOverwriteOnConflict()) return doSaveField(patch, true)
+      await reloadTask()
+      return false
     }
     toast.add({ title: 'Не удалось сохранить', description: e instanceof ApiError ? e.message : undefined, color: 'error' })
+    return false
   } finally {
     savingField.value = null
   }
 }
 
-async function saveTitle(v: string) {
+async function saveTitle(v: string): Promise<boolean> {
   const title = v.trim()
   if (!title) {
     toast.add({ title: 'Название не может быть пустым', color: 'error' })
-    return
+    return false
   }
-  if (title === task.value?.title) return
-  await saveField({ title })
+  if (title === task.value?.title) return true
+  return saveField({ title })
 }
 
-async function saveDescription(v: string) {
-  if (v === (task.value?.description ?? '')) return
-  await saveField({ description: v })
+async function saveDescription(v: string): Promise<boolean> {
+  if (v === (task.value?.description ?? '')) return true
+  return saveField({ description: v })
+}
+
+// Файл, прикреплённый к черновику описания, уходит на сервер только по
+// «Сохранить» (InlineEdit :upload-file) — до этого он лежит в IndexedDB и
+// в «Файлах» задачи его никто не видит.
+async function uploadDescriptionFile(file: File): Promise<string> {
+  try {
+    const res = await uploadTaskFile(projectIdNum.value, taskIdNum.value, file)
+    loadFiles()
+    return taskFileReferenceUrl(res.fileName)
+  } catch (e) {
+    toast.add({ title: `Не удалось загрузить «${file.name}»`, description: e instanceof ApiError ? e.message : undefined, color: 'error' })
+    throw e
+  }
 }
 
 const project = computed(() => dictionaries.projectById.get(projectIdNum.value))
@@ -331,6 +360,7 @@ async function load() {
   timeEntries.value = []
   summaryText.value = ''
   summaryUpdatedAt.value = null
+  summaryLoaded.value = false
   totalSeconds.value = 0
 
   try {
@@ -377,6 +407,7 @@ async function loadComments() {
   loadingComments.value = true
   try {
     comments.value = await listTaskComments(taskIdNum.value)
+    restoreCommentEditDraft()
   } catch (e) {
     toast.add({ title: 'Не удалось загрузить комментарии', description: e instanceof ApiError ? e.message : undefined, color: 'error' })
   } finally {
@@ -483,6 +514,8 @@ async function loadSummary() {
     summaryUpdatedAt.value = res.updatedAt
   } catch {
     summaryText.value = ''
+  } finally {
+    summaryLoaded.value = true
   }
 }
 
@@ -651,6 +684,7 @@ async function submitComment() {
   try {
     await createComment(taskIdNum.value, { content })
     newComment.value = ''
+    commentDraft.clear()
     await loadComments()
   } catch (e) {
     toast.add({ title: 'Не удалось отправить комментарий', description: e instanceof ApiError ? e.message : undefined, color: 'error' })
@@ -659,14 +693,51 @@ async function submitComment() {
   }
 }
 
+// Правка своего комментария тоже живёт в черновике: после перезагрузки
+// редактор открывается сам с недописанным текстом (restoreCommentEditDraft).
+const commentEditKey = (id: number) => `comment.${id}.edit`
+const commentEditRestoredAt = ref<number | null>(null)
+let commentEditTimer: ReturnType<typeof setTimeout> | undefined
+
 function startEditComment(comment: CommentResponse) {
+  const d = readTextDraft(commentEditKey(comment.id))
+  const restored = !!d && d.value !== comment.content
   editingCommentId.value = comment.id
-  editingCommentText.value = comment.content
+  editingCommentText.value = restored ? d.value : comment.content
+  commentEditRestoredAt.value = restored ? d.at : null
+}
+
+function cancelEditComment() {
+  clearTimeout(commentEditTimer)
+  if (editingCommentId.value != null) clearTextDraft(commentEditKey(editingCommentId.value))
+  editingCommentId.value = null
+  commentEditRestoredAt.value = null
+}
+
+watch(editingCommentText, (text) => {
+  const id = editingCommentId.value
+  if (id == null) return
+  clearTimeout(commentEditTimer)
+  commentEditTimer = setTimeout(() => {
+    if (editingCommentId.value !== id) return
+    const original = comments.value.find(c => c.id === id)?.content ?? ''
+    if (text !== original) writeTextDraft(commentEditKey(id), text, original)
+    else clearTextDraft(commentEditKey(id))
+  }, 400)
+})
+
+function restoreCommentEditDraft() {
+  if (editingCommentId.value != null) return
+  const withDraft = comments.value.find(c => c.userId === auth.profile?.id && readTextDraft(commentEditKey(c.id)))
+  if (withDraft) startEditComment(withDraft)
 }
 
 async function saveEditComment(comment: CommentResponse) {
   try {
     await updateComment(comment.id, { content: editingCommentText.value, visibility: comment.visibility })
+    clearTimeout(commentEditTimer)
+    clearTextDraft(commentEditKey(comment.id))
+    commentEditRestoredAt.value = null
     editingCommentId.value = null
     await loadComments()
   } catch (e) {
@@ -737,17 +808,19 @@ function download(file: FileResponse) {
   })
 }
 
-async function saveSummary(value: string) {
-  if (value === summaryText.value) return
+async function saveSummary(value: string): Promise<boolean> {
+  if (value === summaryText.value) return true
   const before = summaryText.value
   summaryText.value = value
   try {
     const res = await updateTaskSummary(taskIdNum.value, { summary: value })
     summaryUpdatedAt.value = res.updatedAt
     toast.add({ title: 'Резюме сохранено', color: 'primary' })
+    return true
   } catch (e) {
     summaryText.value = before
     toast.add({ title: 'Не удалось сохранить резюме', description: e instanceof ApiError ? e.message : undefined, color: 'error' })
+    return false
   }
 }
 
@@ -768,6 +841,7 @@ async function submitTimeLog() {
     logHours.value = 0
     logMinutes.value = 0
     logDescription.value = ''
+    timeLogDraft.clear()
     logDate.value = todayInput()
     await Promise.all([loadTime(), loadActivity()])
     // Убывающая полоска + крестик тоста читаются как «окно отмены» (тот же
@@ -877,7 +951,8 @@ function humanizeAction(type: string): string {
           <InlineEdit
             :key="`title-${task.id}`"
             :model-value="task.title"
-            confirm-label="Готово"
+            confirm-label="Сохранить"
+            :draft-key="`task.${task.id}.title`"
             @save="saveTitle"
           >
             <template #default="{ value }">
@@ -907,9 +982,10 @@ function humanizeAction(type: string): string {
               :model-value="task.description ?? ''"
               multiline
               placeholder="Добавьте описание…"
-              confirm-label="Готово"
+              confirm-label="Сохранить"
               :mention-members="mentionUsers"
-              :draft-key="`taskmind.taskDraft.desc.${task.id}`"
+              :draft-key="`task.${task.id}.description`"
+              :upload-file="uploadDescriptionFile"
               @save="saveDescription"
             >
               <template #default="{ value }">
@@ -937,11 +1013,13 @@ function humanizeAction(type: string): string {
               />
             </p>
             <InlineEdit
+              v-if="summaryLoaded"
               :key="`summary-${task.id}`"
               :model-value="summaryText"
               multiline
               placeholder="Краткое резюме задачи"
               confirm-label="Сохранить"
+              :draft-key="`task.${task.id}.summary`"
               @save="saveSummary"
             >
               <template #default="{ value }">
@@ -1026,9 +1104,12 @@ function humanizeAction(type: string): string {
                       :rows="3"
                       @submit="saveEditComment(comment)"
                     />
+                    <p v-if="commentEditRestoredAt" class="text-xs text-warning">
+                      Восстановлен несохранённый черновик — виден только вам до «Сохранить».
+                    </p>
                     <div class="flex gap-2">
                       <UButton size="xs" color="primary" @click="saveEditComment(comment)">Сохранить</UButton>
-                      <UButton size="xs" variant="outline" color="primary" @click="editingCommentId = null">Отмена</UButton>
+                      <UButton size="xs" variant="outline" color="primary" @click="cancelEditComment">Отмена</UButton>
                     </div>
                   </div>
                   <MarkdownView v-else :source="comment.content" class="mt-1" :mentions="mentionUsers" />
@@ -1061,6 +1142,9 @@ function humanizeAction(type: string): string {
                   </UButton>
                   <span v-if="mentionedInDraft.length" class="text-xs text-muted">
                     Упомянуты: {{ mentionedInDraft.map(u => u.name).join(', ') }}
+                  </span>
+                  <span v-if="commentDraft.restored.value" class="text-xs text-warning">
+                    Несохранённый черновик — виден только вам
                   </span>
                 </div>
               </div>
